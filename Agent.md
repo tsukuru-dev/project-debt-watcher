@@ -76,6 +76,36 @@ The CLI should override any presets in the config temporarily this will then use
 
 If user wants fresh items to also appear then we will need a command for that too
 
+## Saving reports
+
+Users must be able to generate a report and then save that same report with a separate command:
+
+```sh
+npx debt-watcher graveyard --blame
+npx debt-watcher save
+```
+
+Support an optional output path:
+
+```sh
+npx debt-watcher save ./reports/debt-report.md
+```
+
+- Save the last successfully generated `graveyard` or `summary` report for the current repository without rescanning. Preserve its original generation time, scope, filters, age values, author visibility, and closing line.
+- Retain the latest report snapshot per repository in a user-level cache outside the repository so it survives separate CLI invocations, including `npx`. Local, global, and `npx` usage must share this behaviour. Do not store snapshots in shared configuration or Git.
+- For the first version, export readable UTF-8 Markdown with headings, tables where applicable, emojis, and ordinary links instead of terminal colour or hyperlink escape sequences.
+- Include a default report directory in the configuration template, initially `./debt-watcher-reports`. Resolve configured relative directories against the repository root so the setting works for teammates and when the whole repository moves. Also support absolute directory paths valid on the current operating system; document that personal absolute paths are not portable between teammates' machines.
+- Without an explicit output file path, save in the configured report directory with a timestamped `debt-watcher-report-<timestamp>.md` filename valid on Windows, macOS, and Linux. Display the full saved path.
+- An explicit output file path overrides the configured directory for that save only. Resolve CLI relative paths against the current working directory. Do not silently rewrite the shared configuration for a one-off export.
+- Check that the resolved destination directory exists on every save. If it is missing during interactive use, show the full path and offer to create it, retry after the user creates it manually, choose another directory, or cancel. Create directories only after confirmation; create the report file when the destination is ready.
+- When the user chooses a different directory, offer to remember it as the default in the shared configuration, explaining that this changes the team's setting. Persist it only after confirmation and successful directory validation or creation, preserving all other settings. Store directories inside the repository as relative paths. Creating the already-configured directory requires no configuration change.
+- In non-interactive use, a missing destination directory must produce a clear error with instructions to create it or update the configured path; do not prompt or automatically create it.
+- Do not search the filesystem for matching folder names or silently redirect output. Moving the whole repository preserves relative directory settings. If only the report directory moves or is renamed, require an updated path through configuration or the interactive directory selection.
+- If the destination path is invalid or cannot be written to, report the specific problem without claiming the report was saved. Preserve the cached report so the user can retry.
+- Do not silently overwrite an existing file; request confirmation interactively or fail clearly in non-interactive use. This also applies to a collision with an automatically generated filename.
+- If no saved snapshot exists for the current repository, explain that the user must generate a report first. Never export another repository's report or silently generate a replacement.
+- Exported reports are user-requested files; saving must not automatically stage, commit, or change Git ignore rules for them.
+
 ## Compatibility
 It should work for the following languages: Python, JS, TS, Node, React, CSS, C++, Rust, Go, Django
 
