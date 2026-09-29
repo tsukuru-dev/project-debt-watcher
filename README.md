@@ -1,65 +1,109 @@
-# to-do-graveyard
-Your friendly neighbourhood Project debt watcher
+# Project Debt Watcher
+
+Your friendly neighbourhood project debt watcher. Dig up forgotten TODOs, unresolved issues, and stale branches before they become fossils.
+
+> **Status: planning.** This repository currently documents the project concept. The commands and features below describe the intended interface; an installable CLI is not yet included.
 
 ## What it does
 
-### Commands
+Project Debt Watcher is a planned command-line tool for Git repositories. Its `graveyard` report will bring together three types of project debt:
 
-GRAVEYARD LIST (ALL BRANCHES ON LOCAL)
-> npx debt-watcher graveyard
+- **Code comments:** unresolved markers such as `TODO`, `FIXME`, and `WORKAROUND`.
+- **Issues:** unresolved repository issues, with links to their original discussions.
+- **Stale branches:** branches that have not received a commit within a configurable period.
 
-FOR GRAVEYARD LIST WITH AUTHORS
-> npx debt-watcher graveyard --blame
-gives you the full list of graveyard uses `git blame`
+Reports will show items from oldest to newest, making it easier to spot work that has been left behind.
 
-GRAVEYARD LIST ALL BRANCHES ON REMOTE
-> npx debt-watcher graveyard --remote --all
+## Planned commands
 
+Run these commands from inside the Git repository you want to inspect once the CLI is available.
 
-### How the system works
+### Inspect all local branches
 
-the system does the following:
+```sh
+npx debt-watcher graveyard
+```
 
-looks at current GitHub repo -> scans source files -> finds comments in code -> git blame each of them -> get Author date and commit -> calculate age -> list oldest to newest -> print pretty CLI
+All local branches will be included by default.
 
-### Capabilities and what the report contains
+### Include code comment authors
 
-Tool can inspect git remote get-url origin although that has to be done via command where you can apply it to specific branches or all branches on remote etc but by default it applies to all branches on local
+```sh
+npx debt-watcher graveyard --blame
+```
 
-Entries contain clickable terminal links + if detect a Github/gitlab remote then generate github/gitlab remote links
+Include authorship details alongside flagged code comments in the report.
 
-Code Total at right side
-unresolved comments in code
+### Inspect all remote branches
+
+```sh
+npx debt-watcher graveyard --remote --all
+```
+
+Support for selecting specific branches is also planned. The corresponding flags are still to be defined.
+
+Additional CLI options will let you temporarily override the configured freshness threshold and include fresh items in the report. Their flag names are still to be defined.
+
+## How scanning will work
+
+1. Identify the current Git repository and the branches in scope.
+2. Scan source files for configured comment markers.
+3. Determine comment dates, commits, and authors from Git history. Internally, the tool uses `git blame` to collect these details.
+4. Collect unresolved issues and identify stale branches using their latest commits.
+5. Calculate item ages, sort from oldest to newest, and print the graveyard report.
+
+The tool will inspect `git remote get-url origin` to identify the repository's remote. Recognised GitHub and GitLab remotes will be used to generate web links alongside clickable terminal file links.
+
+Issue provider support and authentication requirements are still to be defined.
+
+## The graveyard report
+
+Each section will display its item count on the right, with an age indicator on each row.
+
+| Section | Row contents |
+| --- | --- |
+| Code | Age emoji, days old, linked comment marker, comment text, author when requested |
+| Issues | Age emoji, days old, linked issue ID, issue title, author |
+| Stale branches | Age emoji, days since the last commit, linked commit ID, branch name, last commit author |
+
+The report will end with a debt summary containing:
+
+- Total debt across all three categories.
+- The oldest item, including its debt type and details.
+- Separate counts for code comments, issues, and stale branches.
+- A randomly selected closing line, potentially based on the age or volume of debt: *“It's probably not temporary anymore.”*
+
+### Default comment markers
+
+The planned defaults will flag comments containing these markers:
+
+```text
 // TODO:
 // FIXME:
 // HACK:
 // DEPRECATED:
 // TEMP:
 // WORKAROUND:
+```
 
-CLI to look like:
-emoji for how old| days old | code type (clickable) | rest of the comment | author
+These examples use `//` comments. Supported source languages and comment syntax are still to be defined.
 
-Issues Total at right side
-CLI to look like:
-emoji for how old| days old | Issue ID (clickable) | Issue name | author
+## Planned configuration
 
-Stale Branches Total at right side
-emoji for how old| last commit days old | last commit ID (clickable) | Branch Name | last commit author
+A supplied configuration template will contain editable defaults for:
 
-Total debt:
-Oldest: Debt type and details
-Code count total
-Issues count total
-Stale Branches count total
+- **Comment markers:** which unresolved code comments to include.
+- **Freshness threshold:** the number of days used to filter ageing debt.
+- **Age categories:** thresholds for ageing (💀), buried (🪦), and fossil (🦖) items.
 
-Funny line: something like it's probably not temporary anymore but a variety of lines that randomly get used maybe depending on how bad the persons volume of debt vs code count or vs issues or stale branches or it uses how old the oldest is or which category of old has the most eg fossil buried ageing etc
+By default, the configuration will set a single freshness threshold. Fresh items will be excluded unless you request them through the CLI. The age range from the freshness threshold to the oldest graveyard item will be divided into three equal bands: ageing, buried, and fossil.
 
-Amount of days as filter and unresolved code comments can be modified and editted/stipulated/set up
+For more control, you will be able to set explicit thresholds for each age category in the configuration file.
 
-Emoji is dictated by oldest graveyard item - stipulated length/3
-each third then gets its own emoji demarking it as low medium high
-or the user can set up low medium high themselves if they want to be specific and not just set the amount of days filter
+A freshness threshold supplied through the CLI will temporarily override the configured thresholds for that run and use the automatic three-band calculation. It will leave the saved configuration unchanged.
 
-So user can either set just the fresh threshold or they can be more specific and set the ageing(RIP emoji) buried (gravestone emoji) and fossil (dinosaur emoji) thresholds
+Default day values, configuration filename, schema, and handling of age-band boundaries are still to be finalised.
 
+## Development status
+
+Implementation, installation instructions, and development commands will be added as the CLI takes shape.
