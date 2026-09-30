@@ -23,8 +23,8 @@ test("compiled CLI works outside a Git repository and creates no user or project
       [["--global", "config", "--help"], 0, /--copy-from/],
       [["init", "--help"], 0, /--repo/],
       [["graveyard", "--save", "--summary", "blame"], 1, /Report generation and saving are not implemented yet/],
-      [["config", "--list"], 1, /Configuration commands are not implemented yet/],
-      [["--global", "config"], 1, /Configuration commands are not implemented yet/],
+      [["config", "--list"], 1, /Cannot resolve a Git working tree/],
+      [["--global", "config"], 1, /Configuration editing, copying, and opening are not implemented yet/],
       [["init"], 1, /Team setup is not implemented yet/],
       [["not-a-command"], 1, /unknown command/],
     ];

@@ -23,15 +23,22 @@ export interface CommandHandlers {
 
 export interface CliOptions {
   version: string;
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
   stdout?: (text: string) => void;
   stderr?: (text: string) => void;
   handlers?: Partial<CommandHandlers>;
 }
 
 function createProgram(options: CliOptions): Command {
+  const writeOutput = options.stdout ?? ((text: string) => { process.stdout.write(text); });
   const handlers: CommandHandlers = {
     graveyard: runGraveyard,
-    config: runConfig,
+    config: (values) => runConfig(values, {
+      cwd: options.cwd ?? process.cwd(),
+      env: options.env ?? process.env,
+      writeOutput,
+    }),
     init: runInit,
     ...options.handlers,
   };
@@ -43,12 +50,12 @@ function createProgram(options: CliOptions): Command {
     .option("--repo <path>", "Select another local Git repository", nonEmpty)
     .configureHelp({ showGlobalOptions: true })
     .configureOutput({
-      writeOut: options.stdout ?? ((text) => { process.stdout.write(text); }),
+      writeOut: writeOutput,
       writeErr: options.stderr ?? ((text) => { process.stderr.write(text); }),
     })
     .showHelpAfterError("Run 'debt-watcher --help' for usage.")
     .exitOverride()
-    .addHelpText("after", "\nBuild stage: routing is available; reports, configuration actions, and team setup are not implemented yet.");
+    .addHelpText("after", "\nConfiguration listing is available. Reports, configuration editing, and team setup are not implemented yet.");
 
   program.command("graveyard")
     .description("Generate or save a detailed report or summary (implementation pending)")
@@ -82,7 +89,7 @@ function createProgram(options: CliOptions): Command {
     });
 
   const config = program.command("config")
-    .description("Open or edit repository configuration or personal defaults (implementation pending)");
+    .description("Inspect saved settings (editing and opening are not implemented yet)");
   const actions = [
     new Option("--set <key=value...>", "Replace one or more settings together"),
     new Option("--add <key=value>", "Add markers without replacing the list"),
@@ -98,7 +105,8 @@ function createProgram(options: CliOptions): Command {
   }
   config.addHelpText("after", [
     "",
-    "With no action, open the selected config in an editor. Choose only one action.",
+    "Listing is read-only and requires an existing configuration file. Choose only one action.",
+    "Editing, copying, and opening the config in an editor are not implemented yet.",
     "Examples:",
     "  debt-watcher config --set fresh=30 ageing=60 buried=120 fossil=365",
     '  debt-watcher config --add markers="TO DO,FIXME"',
