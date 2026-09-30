@@ -19,6 +19,31 @@ function isText(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0 && !value.includes("\0");
 }
 
+function markerProblems(value: unknown): string[] {
+  if (!Array.isArray(value)) return ["markers must be an array of plain strings."];
+  const problems: string[] = [];
+  const seen = new Set<string>();
+  for (const [index, marker] of value.entries()) {
+    if (!isText(marker)) {
+      problems.push(`markers[${index}] must be a non-empty string without null characters.`);
+      continue;
+    }
+    if (marker !== marker.trim()) problems.push(`markers[${index}] must not have surrounding whitespace.`);
+    if (/^(?:\/\/|\/\*|#|<!--|\{#|\{\/\*|\{%\s*comment\b)/.test(marker)
+      || /(?:\*\/|-->|#\})$/.test(marker)) {
+      problems.push(`markers[${index}] must contain marker text without language comment delimiters.`);
+    }
+    if (seen.has(marker)) problems.push(`markers contains the duplicate '${marker}'.`);
+    seen.add(marker);
+  }
+  return problems;
+}
+
+export function validateMarkers(value: unknown): asserts value is string[] {
+  const problems = markerProblems(value);
+  if (problems.length) throw new ConfigurationValidationError(problems);
+}
+
 function assertConfiguration(value: unknown): asserts value is ConfigurationDocument {
   if (!isObject(value)) {
     throw new ConfigurationValidationError(["The configuration must be a JSON object."]);
@@ -39,24 +64,7 @@ function assertConfiguration(value: unknown): asserts value is ConfigurationDocu
   }
   if (!isText(value.reportDirectory)) problems.push("reportDirectory must be a non-empty path string without null characters.");
 
-  if (!Array.isArray(value.markers)) {
-    problems.push("markers must be an array of plain strings.");
-  } else {
-    const seen = new Set<string>();
-    for (const [index, marker] of value.markers.entries()) {
-      if (!isText(marker)) {
-        problems.push(`markers[${index}] must be a non-empty string without null characters.`);
-        continue;
-      }
-      if (marker !== marker.trim()) problems.push(`markers[${index}] must not have surrounding whitespace.`);
-      if (/^(?:\/\/|\/\*|#|<!--|\{#|\{\/\*|\{%\s*comment\b)/.test(marker)
-        || /(?:\*\/|-->|#\})$/.test(marker)) {
-        problems.push(`markers[${index}] must contain marker text without language comment delimiters.`);
-      }
-      if (seen.has(marker)) problems.push(`markers contains the duplicate '${marker}'.`);
-      seen.add(marker);
-    }
-  }
+  problems.push(...markerProblems(value.markers));
 
   const customKeys = ["ageing", "buried", "fossil"] as const;
   if (customKeys.some((key) => Object.hasOwn(value, key))) {

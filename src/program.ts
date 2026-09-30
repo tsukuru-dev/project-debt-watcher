@@ -55,7 +55,7 @@ function createProgram(options: CliOptions): Command {
     })
     .showHelpAfterError("Run 'debt-watcher --help' for usage.")
     .exitOverride()
-    .addHelpText("after", "\nConfiguration listing is available. Reports, configuration editing, and team setup are not implemented yet.");
+    .addHelpText("after", "\nConfiguration listing and editing are available. Reports, config copying/opening, and team setup are not implemented yet.");
 
   program.command("graveyard")
     .description("Generate or save a detailed report or summary (implementation pending)")
@@ -89,7 +89,7 @@ function createProgram(options: CliOptions): Command {
     });
 
   const config = program.command("config")
-    .description("Inspect saved settings (editing and opening are not implemented yet)");
+    .description("Inspect or edit saved settings (copying and opening are not implemented yet)");
   const actions = [
     new Option("--set <key=value...>", "Replace one or more settings together"),
     new Option("--add <key=value>", "Add markers without replacing the list"),
@@ -105,12 +105,13 @@ function createProgram(options: CliOptions): Command {
   }
   config.addHelpText("after", [
     "",
-    "Listing is read-only and requires an existing configuration file. Choose only one action.",
-    "Editing, copying, and opening the config in an editor are not implemented yet.",
+    "Choose only one action. Listing is read-only; repository edits require an existing config.",
+    "An explicit --global edit creates missing personal defaults from the supplied template.",
+    "Copying and opening the config in an editor are not implemented yet.",
     "Examples:",
     "  debt-watcher config --set fresh=30 ageing=60 buried=120 fossil=365",
     '  debt-watcher config --add markers="TO DO,FIXME"',
-    "  debt-watcher --global config --copy-from repo",
+    "  debt-watcher --global config --set fresh=30",
   ].join("\n"))
     .action(async (_localOptions, command: Command) => {
       const values = command.optsWithGlobals<ConfigArguments>();

@@ -1,8 +1,8 @@
 # Installation
 
-The TypeScript build, command routing, help, version output, configuration loading/validation, and configuration listing are implemented. Reports, configuration editing/copying, editor opening, and team setup remain future build stages.
+The TypeScript build, command routing, help, version output, configuration loading/validation, listing, and editing are implemented. Reports, configuration copying, editor opening, and team setup remain future build stages.
 
-The package uses one executable named `debt-watcher`. This build targets Node.js 22 or newer. npm is needed for installation. Git locates repository configuration and will also be used for scanning; listing personal defaults needs no Git repository. See `../Agent.md` for the complete requirements.
+The package uses one executable named `debt-watcher`. This build targets Node.js 22 or newer. npm is needed for installation. Git locates repository configuration and will also be used for scanning; personal configuration actions need no Git repository. See `../Agent.md` for the complete requirements.
 
 From this package's source directory:
 
@@ -16,7 +16,7 @@ npm run debt-watcher -- graveyard --help
 npm run debt-watcher -- --global config --help
 ```
 
-`build` compiles `src/` into `dist/`. `typecheck` checks types without emitting files. `test` builds first, then runs Node's built-in test runner against the compiled code. The tests cover routing, config validation/listing, help/version output, and an offline installation of the packaged CLI. Configuration tests create temporary Git repositories to check branch and worktree behaviour. Test folders are removed after use.
+`build` compiles `src/` into `dist/`. `typecheck` checks types without emitting files. `test` builds first, then runs Node's built-in test runner against the compiled code. The tests cover routing, config validation/listing/editing, help/version output, and an offline installation of the packaged CLI, including first-use personal configuration. Configuration tests create temporary Git repositories and isolated personal-settings directories to check persistence, branch and worktree behaviour. Test folders are removed after use.
 
 The development `debt-watcher` script runs `node dist/cli.js` so changes can be tried without a global installation or fetching a published package. Rebuild after changing TypeScript source. Consumer projects will receive the script `"debt-watcher": "debt-watcher"` during team setup; that script uses their installed executable.
 

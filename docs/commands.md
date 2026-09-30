@@ -1,18 +1,21 @@
 # Commands
 
-Command routing, help, configuration loading/validation, and configuration listing are implemented. The full command and validation requirements live in `../Agent.md`.
+Command routing, help, configuration loading/validation, listing, and editing are implemented. The full command and validation requirements live in `../Agent.md`.
 
 - `debt-watcher graveyard`: routes report, summary, filter, ordering, and save options to the report handler.
 - `debt-watcher config --list`: displays the active configuration and its file path; `--list markers` displays the configured markers. Existing personal defaults can be listed with `--global config --list`.
+- `debt-watcher config --set key=value`: saves one or more settings after validating the complete result.
+- `debt-watcher config --add markers="TO DO,FIXME"` / `--remove markers="HACK"`: updates the marker list without replacing the other entries.
+- `debt-watcher --global config --set fresh=60`: edits personal defaults, creating them from the template if missing. All three editing actions support this scope.
 - `debt-watcher init`: routes to the team setup handler.
 
-Report generation, configuration editing/copying, editor opening, and team setup still report that they are not implemented and return exit code 1. Listing works with existing files and does not write configuration, install dependencies, open editors, or create user state. See `configuration.md` for the file format and missing-file behaviour.
+Report generation, configuration copying, editor opening, and team setup still report that they are not implemented and return exit code 1. Repository edits require existing valid settings. Listing remains read-only. See `configuration.md` for examples, validation rules, and first-use personal configuration behaviour.
 
 Use `--help` on the executable or on any command. With no arguments, the executable displays help. `--version` reads the installed package version. Help and version return exit code 0 without requiring a Git repository or configuration.
 
 The routing layer rejects unknown commands and flags, conflicting configuration actions, invalid summary/save/order choices, invalid whole-day inputs, malformed filters and assignments, duplicate filter keys, and incompatible scope options. The command-line day inputs currently accept non-negative whole numbers. Omitted options remain unset so the future configuration layer can supply the saved values.
 
-`--global` selects personal configuration only. For repository listings, `--repo` selects a local repository or subfolder relative to the invocation's working directory. It can be combined with `--global` only for the planned repository-to-personal copy action.
+`--global` selects personal configuration only. For repository configuration actions, `--repo` selects a local repository or subfolder relative to the invocation's working directory. It can be combined with `--global` only for the planned repository-to-personal copy action.
 
 Examples using this development checkout after `npm run build`:
 
@@ -24,6 +27,8 @@ npm run debt-watcher -- init --help
 # With a configuration file already present at the target repository root:
 npm run debt-watcher -- config --list
 npm run debt-watcher -- config --list markers
+npm run debt-watcher -- config --set fresh=60 includeFresh=true
+npm run debt-watcher -- config --add markers="TO DO"
 ```
 
 `--save latest` exports a cached report without rescanning or changing its view. It must take a separate execution path from new-report generation.

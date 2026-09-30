@@ -18,7 +18,7 @@ export async function resolveConfigurationLocation(
 ): Promise<ConfigurationLocation> {
   if (options.global) {
     if (options.repo !== undefined) {
-      throw new Error("Listing personal defaults cannot be combined with --repo.");
+      throw new Error("Selecting personal defaults cannot be combined with --repo; only copying from a repository permits it.");
     }
     const paths = (context.platform ?? process.platform) === "win32" ? win32 : posix;
     return { scope: "global", path: paths.join(userConfigDirectory(context), CONFIG_FILENAME) };

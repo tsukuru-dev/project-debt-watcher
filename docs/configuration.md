@@ -34,7 +34,31 @@ Each listing prints the selected file's absolute path. Listing is read-only: it 
 
 Missing files, invalid JSON, invalid settings, and file-access errors fail with the selected path and a clear explanation. Missing repository configuration never falls back to another branch or personal defaults. Saved values must provide all required settings.
 
-Until setup and config editing are built, prepare a configuration manually by copying the supplied template to the selected path. No actual repository or personal configuration is created just by building the package.
+Until team setup is built, prepare a repository configuration manually by copying the supplied template to the repository root. No actual repository or personal configuration is created just by building the package.
+
+## Editing saved settings
+
+Choose one action per invocation:
+
+```sh
+debt-watcher config --set fresh=60
+debt-watcher config --set includeFresh=true showAuthors=false order=newold
+debt-watcher config --set fresh=30 ageing=60 buried=120 fossil=365
+debt-watcher config --set markers="TODO,FIXME"
+debt-watcher config --add markers="TO DO,FIXME"
+debt-watcher config --remove markers="HACK"
+debt-watcher config --set reportDirectory="./team reports"
+debt-watcher config --set fresh=45 --repo "../another-project"
+debt-watcher --global config --set fresh=60
+```
+
+`--set` replaces the named settings. Multiple assignments are merged and validated together before writing; an invalid result leaves the file unchanged. Setting `fresh` without an explicit `ageing`, `buried`, or `fossil` assignment removes saved custom bands and selects automatic bands. Explicit band assignments merge with saved bands and must produce a complete, ascending set.
+
+`--add` and `--remove` operate only on markers. Add appends missing markers, retaining the existing order; remove leaves all other markers alone. Marker matching is exact and case-sensitive. Quote a comma-separated value as one argument; surrounding whitespace is trimmed and internal spaces are kept. Removing all configured markers leaves an empty array.
+
+Every edit displays its target path and result. Adding existing markers, removing absent markers, or setting already-saved values reports no changes and leaves the file untouched. Successful edits preserve unrelated settings, `$schema`, and `metadata`, along with existing indentation, line endings, and a UTF-8 BOM. The complete document is written to a temporary file before replacing the original; a detected intervening edit fails with instructions to rerun. Read-only files and symbolic-link destinations cannot be edited through the CLI.
+
+Repository edits require an existing, valid config at the selected worktree root. Invalid existing files must be corrected manually before CLI editing. Edits change only the working-tree file; they do not stage or commit it. Setting `reportDirectory` saves the path without creating or validating that destination directory; those checks belong to report saving.
 
 ## Personal defaults
 
@@ -44,6 +68,8 @@ Personal defaults use the same format and filename:
 - macOS: `~/Library/Application Support/debt-watcher/debt-watcher.config.json`.
 - Linux and other Unix systems: `$XDG_CONFIG_HOME/debt-watcher/debt-watcher.config.json`, or `~/.config/debt-watcher/debt-watcher.config.json` when the environment value is absent or relative.
 
-Listing an existing personal config needs no repository or Git executable. Personal defaults may later be explicitly copied into a repository; existing repository settings do not continuously inherit them. Personal first-use initialisation, configuration editing/copying, editor opening, and team setup remain future stages. Runtime snapshots and declined-setup state will be stored separately from configuration.
+Personal configuration actions need no repository or Git executable. An explicit `--global config --set`, `--add`, or `--remove` creates missing personal defaults from the supplied template after validating the complete requested change. Listing remains read-only and does not initialise missing defaults. Invalid existing personal files are preserved and reported.
+
+Personal defaults may later be explicitly copied into a repository; existing repository settings do not continuously inherit them. Configuration copying, editor opening, general first-run setup, and team setup remain future stages. Runtime snapshots and declined-setup state will be stored separately from configuration.
 
 CLI overrides will apply only to the current report. Permanent edits and copies must validate settings before writing. Configured relative report directories resolve against the repository root; relative `--output` paths resolve against the invocation's working directory. Loading config does not require the report directory to exist; destination checks and creation prompts belong to saving reports.
