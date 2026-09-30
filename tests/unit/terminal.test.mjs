@@ -4,6 +4,7 @@ import { EventEmitter } from "node:events";
 import { test } from "node:test";
 import { editorCommand, openEditor, parseEditorCommand } from "../../dist/terminal/editor.js";
 import { isInteractive } from "../../dist/terminal/prompts.js";
+import { discoverEditors } from "../../dist/terminal/editor-discovery.js";
 
 test("editor selection prefers VISUAL, then EDITOR, then the platform default", () => {
   assert.deepEqual(editorCommand({ env: { VISUAL: "code --wait", EDITOR: "vi" } }), ["code", "--wait"]);
@@ -102,9 +103,70 @@ test("explicit Windows editors bypass associations and retain launch errors", as
     await assert.rejects(openEditor("C:\\config.json", {
       platform: "win32", env: { [key]: '"C:\\Editor\\editor.exe" --wait' },
       spawnProcess: fake.spawnProcess,
+      discoverEditors: async () => { assert.fail("Explicit preference must bypass discovery"); },
     }), /Configured editor unavailable/);
     assert.equal(fake.calls.length, 1);
     assert.equal(fake.calls[0].command, "C:\\Editor\\editor.exe");
     assert.deepEqual(fake.calls[0].args, ["--wait", "C:\\config.json"]);
   }
+});
+
+test("installed editors are tried in product order before Windows associations", async () => {
+  const fake = launcher([1, new Error("Missing editor"), 0]);
+  await openEditor("C:\\repo & data\\config.json", {
+    platform: "win32", env: {}, spawnProcess: fake.spawnProcess,
+    discoverEditors: async () => [["Code.exe"], ["Cursor.exe"], ["Antigravity.exe"]],
+  });
+  assert.deepEqual(fake.calls.map((call) => call.command), ["Code.exe", "Cursor.exe", "Antigravity.exe"]);
+  for (const call of fake.calls) assert.deepEqual(call.args, ["C:\\repo & data\\config.json"]);
+});
+
+test("exhausted discovery falls back through associations to basic editors on each platform", async () => {
+  for (const [platform, association, basic, basicArgs] of [
+    ["win32", "powershell.exe", "notepad.exe", ["/config.json"]],
+    ["darwin", "/usr/bin/open", "/usr/bin/open", ["-t", "/config.json"]],
+    ["linux", "xdg-open", "vi", ["/config.json"]],
+  ]) {
+    const fake = launcher([1, 1, 0]);
+    await openEditor("/config.json", {
+      platform, env: {}, spawnProcess: fake.spawnProcess, discoverEditors: async () => [["broken-editor"]],
+    });
+    assert.deepEqual(fake.calls.map((call) => call.command), ["broken-editor", association, basic]);
+    assert.deepEqual(fake.calls[2].args, basicArgs);
+  }
+});
+
+test("Windows discovery finds native executables in PATH and standard installs in product order", async () => {
+  const installed = new Set([
+    "D:\\Cursor\\Cursor.exe", "C:\\Users\\A\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+    "C:\\Program Files\\Antigravity\\Antigravity.exe",
+  ]);
+  const result = await discoverEditors({ platform: "win32", env: {
+    Path: '"D:\\Cursor\\bin"', LOCALAPPDATA: "C:\\Users\\A\\AppData\\Local", ProgramFiles: "C:\\Program Files",
+  }, isExecutable: async (path) => installed.has(path) });
+  assert.deepEqual(result, [
+    ["C:\\Users\\A\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe"],
+    ["D:\\Cursor\\Cursor.exe"], ["C:\\Program Files\\Antigravity\\Antigravity.exe"],
+  ]);
+});
+
+test("a recognised current editor takes priority, but generic vscode terminal markers do not", async () => {
+  const installed = new Set(["/usr/bin/code", "/usr/share/cursor/cursor"]);
+  const options = { platform: "linux", env: {
+    PATH: "/usr/bin", TERM_PROGRAM: "vscode",
+    VSCODE_GIT_ASKPASS_MAIN: "/usr/share/cursor/resources/app/extensions/git/dist/askpass-main.js",
+  }, isExecutable: async (path) => installed.has(path) };
+  assert.deepEqual(await discoverEditors(options), [["/usr/share/cursor/cursor"], ["/usr/bin/code"]]);
+  assert.deepEqual(await discoverEditors({ ...options, env: { PATH: "/usr/bin", TERM_PROGRAM: "vscode" } }), [["/usr/bin/code"]]);
+});
+
+test("macOS discovers app bundles without PATH setup and respects the current editor", async () => {
+  const code = "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code";
+  const cursor = "/Users/a/Applications/Cursor.app/Contents/Resources/app/bin/cursor";
+  const installed = new Set([code, cursor]);
+  const options = { platform: "darwin", env: { HOME: "/Users/a" }, isExecutable: async (path) => installed.has(path) };
+  assert.deepEqual(await discoverEditors(options), [[code], [cursor]]);
+  assert.deepEqual(await discoverEditors({ ...options, env: { ...options.env,
+    VSCODE_GIT_ASKPASS_MAIN: "/Users/a/Applications/Cursor.app/Contents/resources/app/extensions/git/dist/askpass-main.js",
+  } }), [[cursor], [code]]);
 });

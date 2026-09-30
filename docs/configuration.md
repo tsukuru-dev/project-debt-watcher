@@ -85,7 +85,16 @@ debt-watcher --global config
 
 With no action, `config` opens the selected file in an interactive terminal. Repository opening requires an existing file. Personal opening creates a missing file from the supplied template. Existing files are preserved; invalid JSON or settings are reported and opened for manual repair.
 
-The editor comes from `VISUAL`, then `EDITOR`, or uses the Windows default app for `.json` files, the system text editor on macOS, and `vi` on other systems. On Windows, if no associated app can be launched, it falls back to Notepad. The associated app may be VS Code, Cursor, or whichever app the user has chosen in Windows; the tool does not change that association. Opening through a Windows association returns once the app is launched, so save your edits before running another command. Environment values can contain an executable and arguments, such as `code --wait` on systems where `code` is directly executable. Quote executable paths containing spaces. Commands are launched without shell expansion; shell aliases, variables and command substitution are not evaluated. On Windows, configure the editor's `.exe` rather than a `.cmd`/`.bat` wrapper.
+Editors are selected in this order:
+
+1. `VISUAL`, then `EDITOR`, when configured. A failed explicit preference is reported so the user can correct it.
+2. The current supported editor, when its installation can be identified from the terminal's `VSCODE_GIT_ASKPASS_MAIN` path. The generic `TERM_PROGRAM=vscode` marker alone is ambiguous because editor forks share it.
+3. Installed VS Code, Cursor, then Antigravity. Discovery checks executable locations on PATH, Windows user/system installations, and macOS system/user Applications folders. Windows discovery uses native executables rather than batch wrappers. Custom installations outside these locations may need an explicit preference.
+4. The system file association: Windows' default `.json` app, macOS `open`, or Linux `xdg-open`. If that fails, use Notepad on Windows, the system text editor on macOS, or `vi` on Linux.
+
+An automatically selected editor that cannot launch is skipped in favour of the next candidate. Detection does not install editors or change file associations. Some GUI launchers return before editing finishes, so save your edits before running another command.
+
+Environment values can contain an executable and arguments, such as `code --wait` on systems where `code` is directly executable. Quote executable paths containing spaces. Commands are launched without shell expansion; shell aliases, variables and command substitution are not evaluated. On Windows, configure the editor's `.exe` rather than a `.cmd`/`.bat` wrapper.
 
 The CLI displays the full config path. If launching the editor fails, it returns an error with that path for manual opening and keeps the file. CI and non-interactive invocations do not launch editors or create defaults through the opening action; they report the selected path instead. Listing and other configuration actions never launch an editor.
 

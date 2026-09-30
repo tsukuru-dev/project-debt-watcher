@@ -1,10 +1,12 @@
 import { spawn } from "node:child_process";
+import { discoverEditors } from "./editor-discovery.js";
 
 export interface EditorOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   platform?: NodeJS.Platform;
   spawnProcess?: typeof spawn;
+  discoverEditors?: typeof discoverEditors;
 }
 
 /** Split executable/arguments without shell expansion; preserve Windows backslashes. */
@@ -76,11 +78,23 @@ async function launch(command: string, args: string[], options: EditorOptions): 
   });
 }
 
-/** Explicit editors take priority; Windows associations fall back to Notepad. */
+/** Explicit preference, current/installed editors, association, then basic editor. */
 export async function openEditor(path: string, options: EditorOptions = {}): Promise<void> {
   const env = options.env ?? process.env;
   const platform = options.platform ?? process.platform;
-  if (platform === "win32" && !env.VISUAL?.trim() && !env.EDITOR?.trim()) {
+  const explicit = env.VISUAL?.trim() || env.EDITOR?.trim();
+  if (!explicit) {
+    for (const [command, ...args] of await (options.discoverEditors ?? discoverEditors)(options)) {
+      if (!command) continue;
+      try {
+        await launch(command, [...args, path], options);
+        return;
+      } catch {
+        // An unavailable automatically selected editor should not block opening.
+      }
+    }
+  }
+  if (platform === "win32" && !explicit) {
     try {
       await launch("powershell.exe", ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", openAssociatedFile], {
         ...options, env: { ...env, DEBT_WATCHER_EDITOR_FILE: path },
@@ -88,6 +102,14 @@ export async function openEditor(path: string, options: EditorOptions = {}): Pro
       return;
     } catch {
       // No association, a broken association, or unavailable PowerShell: use Notepad.
+    }
+  }
+  if (platform !== "win32" && !explicit) {
+    try {
+      await launch(platform === "darwin" ? "/usr/bin/open" : "xdg-open", [path], options);
+      return;
+    } catch {
+      // Fall through to the platform's basic text editor.
     }
   }
   const [command, ...args] = editorCommand(options);
