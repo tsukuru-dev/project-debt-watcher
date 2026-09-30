@@ -4,6 +4,7 @@ export interface EditorOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   platform?: NodeJS.Platform;
+  spawnProcess?: typeof spawn;
 }
 
 /** Split executable/arguments without shell expansion; preserve Windows backslashes. */
@@ -45,16 +46,23 @@ export function editorCommand(options: EditorOptions = {}): string[] {
   return ["vi"];
 }
 
-/** Arguments, including the absolute config path, are never interpolated into a shell. */
-export async function openEditor(path: string, options: EditorOptions = {}): Promise<void> {
-  const [command, ...args] = editorCommand(options);
-  if (!command) throw new Error("No editor executable was selected.");
-  const platform = options.platform ?? process.platform;
-  if (platform === "win32" && /\.(?:cmd|bat)$/i.test(command)) {
-    throw new Error("Set VISUAL or EDITOR to an editor executable (.exe), not a .cmd or .bat wrapper.");
-  }
+// Keep the path in the environment, never in PowerShell source or shell arguments.
+const openAssociatedFile = [
+  "$ErrorActionPreference = 'Stop'",
+  "try {",
+  "$info = New-Object System.Diagnostics.ProcessStartInfo",
+  "$info.FileName = $env:DEBT_WATCHER_EDITOR_FILE",
+  "$info.UseShellExecute = $true",
+  "$info.ErrorDialog = $false",
+  "$info.Verb = 'open'",
+  "[void][System.Diagnostics.Process]::Start($info)",
+  "exit 0",
+  "} catch { exit 1 }",
+].join("\n");
+
+async function launch(command: string, args: string[], options: EditorOptions): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(command, [...args, path], {
+    const child = (options.spawnProcess ?? spawn)(command, args, {
       cwd: options.cwd, env: options.env ?? process.env,
       stdio: "inherit", shell: false, windowsHide: true,
     });
@@ -66,4 +74,26 @@ export async function openEditor(path: string, options: EditorOptions = {}): Pro
       else reject(new Error("Editor exited with " + (signal ? "signal " + signal : "code " + code) + "."));
     });
   });
+}
+
+/** Explicit editors take priority; Windows associations fall back to Notepad. */
+export async function openEditor(path: string, options: EditorOptions = {}): Promise<void> {
+  const env = options.env ?? process.env;
+  const platform = options.platform ?? process.platform;
+  if (platform === "win32" && !env.VISUAL?.trim() && !env.EDITOR?.trim()) {
+    try {
+      await launch("powershell.exe", ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", openAssociatedFile], {
+        ...options, env: { ...env, DEBT_WATCHER_EDITOR_FILE: path },
+      });
+      return;
+    } catch {
+      // No association, a broken association, or unavailable PowerShell: use Notepad.
+    }
+  }
+  const [command, ...args] = editorCommand(options);
+  if (!command) throw new Error("No editor executable was selected.");
+  if (platform === "win32" && /\.(?:cmd|bat)$/i.test(command)) {
+    throw new Error("Set VISUAL or EDITOR to an editor executable (.exe), not a .cmd or .bat wrapper.");
+  }
+  await launch(command, [...args, path], options);
 }
