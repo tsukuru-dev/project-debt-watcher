@@ -316,7 +316,7 @@ Setup must create files in the repository being configured, not in the installed
 
 Team setup must:
 
-- Create the editable repository configuration from the chosen starting settings when one does not exist. The supplied template sets `includeFresh` to `false`, `showAuthors` to `true`, and `order` to `oldnew`.
+- Create the editable repository configuration from the chosen starting settings when one does not exist. The supplied template sets `fresh` to `30` days, `includeFresh` to `false`, `showAuthors` to `true`, and `order` to `oldnew`.
 - Create a minimal `package.json` when none exists, including in Python, Go, and other non-Node repositories. Set `"private": true` only in a newly created package.json to prevent accidental npm publication of that project; preserve an existing project's setting.
 - Add Debt Watcher as a local development dependency using npm, updating the package files and lockfile. Reuse an existing compatible local installation without unnecessary reinstallation or silently changing its dependency classification.
 - Add `"debt-watcher": "debt-watcher"` to the project's npm scripts, preserving other scripts and asking before replacing a conflicting value. Do not add a script named `graveyard`. Reuse an already matching script without changing it.
