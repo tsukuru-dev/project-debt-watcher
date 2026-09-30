@@ -11,7 +11,7 @@ import {
   type GraveyardArguments,
   type SharedArguments,
 } from "./commands/arguments.js";
-import { runConfig } from "./commands/config.js";
+import { runConfig, type ConfigurationInteraction } from "./commands/config.js";
 import { runGraveyard } from "./commands/graveyard.js";
 import { runInit } from "./commands/init.js";
 
@@ -28,6 +28,7 @@ export interface CliOptions {
   stdout?: (text: string) => void;
   stderr?: (text: string) => void;
   handlers?: Partial<CommandHandlers>;
+  terminal?: ConfigurationInteraction;
 }
 
 function createProgram(options: CliOptions): Command {
@@ -38,6 +39,7 @@ function createProgram(options: CliOptions): Command {
       cwd: options.cwd ?? process.cwd(),
       env: options.env ?? process.env,
       writeOutput,
+      ...options.terminal,
     }),
     init: runInit,
     ...options.handlers,
@@ -55,7 +57,7 @@ function createProgram(options: CliOptions): Command {
     })
     .showHelpAfterError("Run 'debt-watcher --help' for usage.")
     .exitOverride()
-    .addHelpText("after", "\nConfiguration listing and editing are available. Reports, config copying/opening, and team setup are not implemented yet.");
+    .addHelpText("after", "\nConfiguration commands are available. Reports and team setup are not implemented yet.");
 
   program.command("graveyard")
     .description("Generate or save a detailed report or summary (implementation pending)")
@@ -89,7 +91,7 @@ function createProgram(options: CliOptions): Command {
     });
 
   const config = program.command("config")
-    .description("Inspect or edit saved settings (copying and opening are not implemented yet)");
+    .description("Open, inspect, edit, or copy configuration settings");
   const actions = [
     new Option("--set <key=value...>", "Replace one or more settings together"),
     new Option("--add <key=value>", "Add markers without replacing the list"),
@@ -107,11 +109,14 @@ function createProgram(options: CliOptions): Command {
     "",
     "Choose only one action. Listing is read-only; repository edits require an existing config.",
     "An explicit --global edit creates missing personal defaults from the supplied template.",
-    "Copying and opening the config in an editor are not implemented yet.",
+    "With no action, open the selected config in an editor (interactive terminals only).",
+    "Copies replace settings, preserving destination metadata; existing settings require confirmation.",
     "Examples:",
     "  debt-watcher config --set fresh=30 ageing=60 buried=120 fossil=365",
     '  debt-watcher config --add markers="TO DO,FIXME"',
     "  debt-watcher --global config --set fresh=30",
+    "  debt-watcher --global config --copy-from repo",
+    "  debt-watcher config --copy-from global",
   ].join("\n"))
     .action(async (_localOptions, command: Command) => {
       const values = command.optsWithGlobals<ConfigArguments>();

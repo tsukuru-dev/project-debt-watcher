@@ -20,7 +20,7 @@ export interface ConfigurationSnapshot {
   source: string;
 }
 
-function parseConfiguration(source: string, path: string): ConfigurationDocument {
+export function parseConfiguration(source: string, path: string): ConfigurationDocument {
   let document: unknown;
   try {
     document = JSON.parse(source.replace(/^\uFEFF/, ""));
@@ -35,11 +35,10 @@ function parseConfiguration(source: string, path: string): ConfigurationDocument
   }
 }
 
-/** Retain the original text to detect edits made between reading and saving. */
-export async function readConfiguration(location: ConfigurationLocation): Promise<ConfigurationSnapshot> {
-  let source: string;
+/** Read without validation so an invalid file can still be opened for manual repair. */
+export async function readConfigurationSource(location: ConfigurationLocation): Promise<string> {
   try {
-    source = await readFile(location.path, "utf8");
+    return await readFile(location.path, "utf8");
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === "ENOENT") {
@@ -48,6 +47,11 @@ export async function readConfiguration(location: ConfigurationLocation): Promis
     throw new Error(`Cannot read configuration "${location.path}" (${code ?? "filesystem error"}).`);
   }
 
+}
+
+/** Retain the original text to detect edits made between reading and saving. */
+export async function readConfiguration(location: ConfigurationLocation): Promise<ConfigurationSnapshot> {
+  const source = await readConfigurationSource(location);
   return { document: parseConfiguration(source, location.path), source };
 }
 
@@ -71,15 +75,17 @@ function formatConfiguration(document: ConfigurationDocument, original: string |
 
 /**
  * Write a complete, validated document beside its destination before replacing it.
- * A null original permits first-use personal defaults only, never repository setup.
+ * A null original permits first-use personal defaults. Repository creation must
+ * be explicitly enabled by the copy/setup flow, never by ordinary setting edits.
  */
 export async function saveConfiguration(
   location: ConfigurationLocation,
   document: ConfigurationDocument,
   original: string | null,
+  options: { allowCreateRepository?: boolean } = {},
 ): Promise<void> {
   validateConfiguration(document);
-  if (original === null && location.scope !== "global") {
+  if (original === null && location.scope !== "global" && !options.allowCreateRepository) {
     throw new Error("Repository configuration must already exist before editing.");
   }
   const directory = dirname(location.path);
@@ -92,7 +98,7 @@ export async function saveConfiguration(
       if (!stats.isFile()) throw new Error("The configuration must be a regular file, not a symbolic link or directory.");
       if (!(stats.mode & 0o222)) throw new Error("The configuration file is read-only.");
       mode = stats.mode & 0o777;
-    } else {
+    } else if (location.scope === "global") {
       await mkdir(directory, { recursive: true });
     }
     const file = await open(temporary, "wx", mode);

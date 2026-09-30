@@ -34,7 +34,7 @@ Each listing prints the selected file's absolute path. Listing is read-only: it 
 
 Missing files, invalid JSON, invalid settings, and file-access errors fail with the selected path and a clear explanation. Missing repository configuration never falls back to another branch or personal defaults. Saved values must provide all required settings.
 
-Until team setup is built, prepare a repository configuration manually by copying the supplied template to the repository root. No actual repository or personal configuration is created just by building the package.
+Until team setup is built, prepare a repository configuration manually from the supplied template, or explicitly copy existing personal settings as described below. No actual repository or personal configuration is created just by building the package.
 
 ## Editing saved settings
 
@@ -58,7 +58,36 @@ debt-watcher --global config --set fresh=60
 
 Every edit displays its target path and result. Adding existing markers, removing absent markers, or setting already-saved values reports no changes and leaves the file untouched. Successful edits preserve unrelated settings, `$schema`, and `metadata`, along with existing indentation, line endings, and a UTF-8 BOM. The complete document is written to a temporary file before replacing the original; a detected intervening edit fails with instructions to rerun. Read-only files and symbolic-link destinations cannot be edited through the CLI.
 
-Repository edits require an existing, valid config at the selected worktree root. Invalid existing files must be corrected manually before CLI editing. Edits change only the working-tree file; they do not stage or commit it. Setting `reportDirectory` saves the path without creating or validating that destination directory; those checks belong to report saving.
+Repository setting edits require an existing, valid config at the selected worktree root. Invalid existing files must be corrected in an editor before using setting actions or copies. Edits change only the working-tree file; they do not stage or commit it. Setting `reportDirectory` saves the path without creating or validating that destination directory; those checks belong to report saving.
+
+## Copying settings
+
+```sh
+debt-watcher --global config --copy-from repo
+debt-watcher --global config --copy-from repo --repo "../source-project"
+debt-watcher config --copy-from global
+debt-watcher config --copy-from global --repo "../destination-project"
+```
+
+Copying validates the source first, shows both paths, and replaces all supported settings, including marker lists and custom age bands. The destination keeps its own `$schema` and `metadata`; source metadata never crosses scopes. Relative report-directory paths stay relative. Absolute paths produce a notice that they may be specific to this machine. Copies never create report directories.
+
+Replacing different existing settings requires confirmation in an interactive terminal; an empty answer, cancellation, or anything other than `y`/`yes` declines. CI and non-interactive use fail when confirmation is required. Matching settings report no changes without prompting or rewriting the file. A missing destination may be created by the explicit copy action, including a repository config; this does not perform team setup.
+
+Missing or invalid sources are errors and are never manufactured from defaults. Invalid destinations are preserved for manual correction. Changes detected in the destination while awaiting confirmation cause the save to fail. Copies do not install dependencies, modify package files, stage changes, or commit them. Existing repository settings never continuously inherit personal settings.
+
+## Opening in an editor
+
+```sh
+debt-watcher config
+debt-watcher config --repo "../another-project"
+debt-watcher --global config
+```
+
+With no action, `config` opens the selected file in an interactive terminal. Repository opening requires an existing file. Personal opening creates a missing file from the supplied template. Existing files are preserved; invalid JSON or settings are reported and opened for manual repair.
+
+The editor comes from `VISUAL`, then `EDITOR`, or defaults to Notepad on Windows, the system text editor on macOS, and `vi` on other systems. Environment values can contain an executable and arguments, such as `code --wait` on systems where `code` is directly executable. Quote executable paths containing spaces. Commands are launched without shell expansion; shell aliases, variables and command substitution are not evaluated. On Windows, configure the editor's `.exe` rather than a `.cmd`/`.bat` wrapper.
+
+The CLI displays the full config path. If launching the editor fails, it returns an error with that path for manual opening and keeps the file. CI and non-interactive invocations do not launch editors or create defaults through the opening action; they report the selected path instead. Listing and other configuration actions never launch an editor.
 
 ## Personal defaults
 
@@ -68,8 +97,8 @@ Personal defaults use the same format and filename:
 - macOS: `~/Library/Application Support/debt-watcher/debt-watcher.config.json`.
 - Linux and other Unix systems: `$XDG_CONFIG_HOME/debt-watcher/debt-watcher.config.json`, or `~/.config/debt-watcher/debt-watcher.config.json` when the environment value is absent or relative.
 
-Personal configuration actions need no repository or Git executable. An explicit `--global config --set`, `--add`, or `--remove` creates missing personal defaults from the supplied template after validating the complete requested change. Listing remains read-only and does not initialise missing defaults. Invalid existing personal files are preserved and reported.
+Personal configuration actions need no repository or Git executable except when copying from a repository. An explicit `--global config --set`, `--add`, or `--remove` creates missing personal defaults from the supplied template after validating the complete requested change. Interactive `--global config` also initialises them before opening. Listing remains read-only and does not initialise missing defaults. Invalid existing personal files are preserved and reported.
 
-Personal defaults may later be explicitly copied into a repository; existing repository settings do not continuously inherit them. Configuration copying, editor opening, general first-run setup, and team setup remain future stages. Runtime snapshots and declined-setup state will be stored separately from configuration.
+General first-run setup, detecting global installations for automatic personal initialisation, and team setup remain future stages. Runtime snapshots and declined-setup state will be stored separately from configuration.
 
 CLI overrides will apply only to the current report. Permanent edits and copies must validate settings before writing. Configured relative report directories resolve against the repository root; relative `--output` paths resolve against the invocation's working directory. Loading config does not require the report directory to exist; destination checks and creation prompts belong to saving reports.
