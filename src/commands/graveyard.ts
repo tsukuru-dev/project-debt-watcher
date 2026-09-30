@@ -1,5 +1,5 @@
-/**
- * Scaffold: Coordinate report generation, summary views, new exports, and unchanged latest-snapshot exports.
- * Implementation will be added in a later build step.
- */
-export {};
+import type { GraveyardArguments } from "./arguments.js";
+
+export async function runGraveyard(_options: GraveyardArguments): Promise<void> {
+  throw new Error("Report generation and saving are not implemented yet.");
+}

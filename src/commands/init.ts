@@ -1,5 +1,5 @@
-/**
- * Scaffold: Invoke the shared team setup or repair flow explicitly, regardless of previously declined offers.
- * Implementation will be added in a later build step.
- */
-export {};
+import type { SharedArguments } from "./arguments.js";
+
+export async function runInit(_options: SharedArguments): Promise<void> {
+  throw new Error("Team setup is not implemented yet.");
+}

@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-/**
- * Scaffold: the single executable entry point for local, global, and npx usage.
- * Command routing and implementation will be added in the next build stages.
- */
-throw new Error("Debt Watcher is scaffolded only; commands are not implemented yet.");
+import { readFileSync } from "node:fs";
+import { runCli } from "./program.js";
 
-export {};
+// Resolve package metadata relative to the executable, not the target repository.
+const { version } = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+) as { version: string };
+
+process.exitCode = await runCli(process.argv.slice(2), { version });

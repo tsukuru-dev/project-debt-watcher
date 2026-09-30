@@ -1,5 +1,5 @@
-/**
- * Scaffold: Coordinate repository and personal config actions; open the selected config when no action is given.
- * Implementation will be added in a later build step.
- */
-export {};
+import type { ConfigArguments } from "./arguments.js";
+
+export async function runConfig(_options: ConfigArguments): Promise<void> {
+  throw new Error("Configuration commands are not implemented yet.");
+}

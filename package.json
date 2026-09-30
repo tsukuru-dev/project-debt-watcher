@@ -3,11 +3,28 @@
   "version": "0.0.0",
   "description": "Your friendly neighbourhood project debt watcher.",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test",
+    "debt-watcher": "node dist/cli.js",
+    "prepack": "npm run build"
+  },
   "bin": {
     "debt-watcher": "dist/cli.js"
   },
   "files": [
     "dist/",
     "templates/"
-  ]
+  ],
+  "dependencies": {
+    "commander": "^14.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "typescript": "^7.0.2"
+  }
 }
