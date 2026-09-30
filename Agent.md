@@ -5,20 +5,38 @@ Your friendly neighbourhood Project debt watcher
 
 ### Commands
 
-SUMMARY ONLY NOT DETAILED TABLE
-> npx debt-watcher summary
+The npm package is named `debt-watcher`; its executable is named `graveyard`. Running the executable without a subcommand generates the detailed report across all local branches.
 
-After team setup, offered on first use or through `npx debt-watcher init`, the shortcut is `npm run debt-summary`.
+| Action | Command (globally installed executable) |
+| --- | --- |
+| Detailed report | `graveyard` |
+| Summary only | `graveyard --summary` |
+| Include code comment authors | `graveyard --blame` |
+| All remote branches | `graveyard --remote --all` |
+| Create or repair team setup | `graveyard init` |
+| Open the repository config | `graveyard config` |
+| Permanently change a setting | `graveyard config set fresh 60` |
+| Save the last report | `graveyard save` |
 
-GRAVEYARD LIST (ALL BRANCHES ON LOCAL)
-> npx debt-watcher graveyard
+`git blame` is an internal implementation detail used to collect comment history. The `--blame` flag controls author display.
 
-FOR GRAVEYARD LIST WITH AUTHORS
-> npx debt-watcher graveyard --blame
-gives you the full list of graveyard uses `git blame`
+For a locally installed package, the project script is `"graveyard": "graveyard"`. Run `npm run graveyard` or pass flags with `npm run graveyard -- --summary`. The standalone `--` belongs to npm and forwards the remaining arguments; `--summary` belongs to our CLI. A bare `graveyard` command requires the executable to be on PATH, normally through global installation.
 
-GRAVEYARD LIST ALL BRANCHES ON REMOTE
-> npx debt-watcher graveyard --remote --all
+For `npx`, use `npx debt-watcher --summary`, which resolves the package's single `graveyard` executable, or explicitly use `npx --package=debt-watcher graveyard --summary`. Do not document bare `npx graveyard` as a way to fetch our package, since the registry package name is different.
+
+### Temporary overrides and permanent settings
+
+- Report flags override repository configuration for one run only; they never save settings. No `-t` or `--configedit` flag is needed.
+- Support `--fresh 60`, `--ageing 60`, `--buried 120`, and `--fossil 365`, with thresholds expressed in days.
+- A freshness override by itself uses automatic three-band calculation, overriding saved custom age bands for that run. Explicit age-band flags select custom bands; merge unspecified bands with saved custom values, then reject incomplete or non-ascending thresholds. When freshness and explicit bands are supplied together, use the supplied freshness filter and explicit custom bands.
+- Support `--markers TODO,FIXME` as a replacement marker list for the run. Store markers as plain strings without language comment delimiters.
+- Support `--include-fresh` and `--no-include-fresh` to override the saved boolean in either direction. Reject supplying both together.
+- Support `--repo "../another-project"` to target another local Git repository. Resolve this path against the invocation's working directory, then use the target repository's configuration, setup, and report snapshot. It is a local path, not a request to clone a remote URL.
+- Allow report flags to combine, including `--summary`, `--blame`, marker filters, age settings, and repository selection.
+- `graveyard config` opens the current repository's existing configuration; `graveyard init` creates or repairs integration. Do not duplicate these actions with a `--setup` flag.
+- Permanent CLI changes use `graveyard config set <key> <value>`, for example `graveyard config set fresh 60`, `graveyard config set includeFresh true`, or `graveyard config set markers TODO,FIXME`.
+- Parse booleans, day thresholds, and comma-separated marker lists into the appropriate config types. Reject unknown keys and invalid resulting settings before writing; preserve unrelated settings and display the updated file path. A permanent freshness change selects automatic age bands; custom bands can be edited together in the config file and must validate before scanning.
+- `--repo` also selects the target for `init`, `config`, `config set`, and `save`. Configuration edits must never silently target a different repository.
 
 
 ### How the system works
@@ -72,26 +90,26 @@ or the user can set up freshness thresholds themselves if they want to be specif
 
 So user can either set just the fresh threshold or they can be more specific and set the ageing(💀) buried (🪦) and fossil (🦖) thresholds
 
-The CLI should override any presets in the config temporarily this will then use the /3 rule
+CLI overrides are temporary. A freshness-only override uses the /3 rule; explicit custom age-band overrides use their validated thresholds instead.
 
-If user wants fresh items to also appear then we will need a command for that too
+The configuration must contain an `includeFresh` boolean, set to `false` in the initial/default template. `--include-fresh` includes fresh items for one run; `--no-include-fresh` excludes them for one run. This changes item inclusion, not the age thresholds. Use `graveyard config set includeFresh true` or `false` to persist the choice.
 
 ## Saving reports
 
 Users must be able to generate a report and then save that same report with a separate command:
 
 ```sh
-npx debt-watcher graveyard --blame
-npx debt-watcher save
+graveyard --blame
+graveyard save
 ```
 
 Support an optional output path:
 
 ```sh
-npx debt-watcher save ./reports/debt-report.md
+graveyard save ./reports/debt-report.md
 ```
 
-- Save the last successfully generated `graveyard` or `summary` report for the current repository without rescanning. Preserve its original generation time, scope, filters, age values, author visibility, and closing line.
+- Save the last successfully generated detailed or `--summary` report for the current repository without rescanning. Preserve its original generation time, scope, filters, age values, author visibility, and closing line.
 - Retain the latest report snapshot per repository in a user-level cache outside the repository so it survives separate CLI invocations, including `npx`. Local, global, and `npx` usage must share this behaviour. Do not store snapshots in shared configuration or Git.
 - For the first version, export readable UTF-8 Markdown with headings, tables where applicable, emojis, and ordinary links instead of terminal colour or hyperlink escape sequences.
 - Include a default report directory in the configuration template, initially `./debt-watcher-reports`. Resolve configured relative directories against the repository root so the setting works for teammates and when the whole repository moves. Also support absolute directory paths valid on the current operating system; document that personal absolute paths are not portable between teammates' machines.
@@ -125,18 +143,19 @@ we will do issues last so lets put a pin in that for now
 
 - Build one npm CLI package using TypeScript and Node.js.
 - Publish compiled JavaScript so users do not need to build the tool.
-- Expose the `debt-watcher` executable.
+- Publish the `debt-watcher` package with a single executable named `graveyard`.
 - Users require Node.js/npm and Git.
 
-### Run without adding a project dependency
+### Launch through npx
 
 Support:
-- `npx debt-watcher graveyard`
-- `npx debt-watcher graveyard --blame`
-- `npx debt-watcher summary`
+- `npx debt-watcher`
+- `npx debt-watcher --blame`
+- `npx debt-watcher --summary`
+- `npx --package=debt-watcher graveyard init`
 
 This usage must work in Git repositories without a package.json.
-Every repository must have a Debt Watcher configuration file before scanning, including when using `npx`. If it is missing during an interactive run, offer the setup choices below, with team setup recommended. If setup is declined, cancel the scan. Non-interactive and CI runs must report missing configuration with setup instructions instead of silently using defaults.
+Every repository must have a Debt Watcher configuration file before scanning, including when using `npx`. If it is missing during an interactive run, offer the single team setup flow below. If setup is declined, cancel the scan. Non-interactive and CI runs must report missing configuration with setup instructions instead of silently using defaults.
 `npx` uses the locally installed package when available; otherwise it can obtain the package through npm's cache. It does not necessarily download the package on every run.
 
 ### Install in a project
@@ -147,11 +166,9 @@ After installation, the same npx commands must run the local version.
 
 ### Global installation
 
-Support `npm install -g debt-watcher`, then `debt-watcher graveyard`, `debt-watcher summary`, `debt-watcher save`, and `debt-watcher init` from any appropriate repository.
+Support `npm install -g debt-watcher`, then `graveyard`, `graveyard --summary`, `graveyard save`, and `graveyard init` from any appropriate repository.
 
-Global, local, and `npx` usage must provide the same scanning features and use the same repository configuration. A global installation does not itself add a dependency or scripts to each repository; users can choose team setup when they want that integration.
-
-// note for later - what if global then where is config file etc
+Global, local, and `npx` usage must provide the same scanning features and use the same configuration in the target repository root. Global installation alone does not configure repositories. Accepted setup always creates the team integration, including a local dependency, even when launched through the global executable or `npx`.
 
 ### Team dependency installation
 
@@ -181,13 +198,9 @@ Offer setup when a reporting command encounters a missing configuration during a
 npx debt-watcher init
 ```
 
-Globally installed users can run `debt-watcher init`. Users do not need to run `init` separately if they accept setup on first use or their repository already contains a valid configuration.
+Globally installed users can run `graveyard init`. Users do not need to run `init` separately if they accept setup on first use or their repository already contains a valid configuration.
 
-Offer these choices, explaining the file changes and any dependency installation before requiring confirmation:
-
-1. **Team setup (recommended):** create the configuration, integrate the tool with the project's npm dependencies and scripts, and open the configuration file.
-2. **Configuration only:** create and open the configuration without adding a local dependency, package.json, or npm scripts. This supports repositories using global or `npx` execution.
-3. **Cancel:** make no project changes and cancel the requested scan because configuration is mandatory.
+Provide one setup flow: team setup. Explain the configuration, npm dependency and script, package-file, and Git ignore changes, then ask for confirmation. Accepting performs setup and opens the configuration. Declining makes no project changes and cancels the requested scan. Do not offer a separate configuration-only mode.
 
 Setup must create files in the repository being configured, not in the installed package or npm cache. It must use the default configuration template and open the file for editing rather than ask a questionnaire about each setting. If opening the editor fails, display the configuration's full path. Existing configuration must be reused and preserved.
 
@@ -196,7 +209,7 @@ Team setup must:
 - Create the editable default configuration file when one does not exist.
 - Create a minimal `package.json` when none exists, including in Python, Go, and other non-Node repositories. Set `"private": true` only in a newly created package.json to prevent accidental npm publication of that project; preserve an existing project's setting.
 - Add Debt Watcher as a local development dependency using npm, updating the package files and lockfile. Reuse an existing compatible local installation without unnecessary reinstallation or silently changing its dependency classification.
-- Add the npm scripts shown below to the existing or newly created package.json.
+- Add the single npm script shown below to the existing or newly created package.json. Summary is a report flag, not a separate npm script.
 - Ensure `node_modules/` is ignored by Git, creating or updating `.gitignore` while preserving existing entries. Do not ignore the shared configuration or package files.
 - Preserve unrelated package.json fields, dependencies, scripts, and configuration.
 - Ask before replacing conflicting scripts or existing configuration; without confirmation, preserve them. In non-interactive use, report conflicts without overwriting them.
@@ -210,8 +223,7 @@ CI and non-interactive report runs must not prompt, open an editor, install depe
 ```json
 {
   "scripts": {
-    "graveyard": "debt-watcher graveyard",
-    "debt-summary": "debt-watcher summary"
+    "graveyard": "graveyard"
   }
 }
 ```
@@ -219,7 +231,9 @@ CI and non-interactive report runs must not prompt, open an editor, install depe
 Run them with:
 
 - `npm run graveyard`
-- `npm run debt-summary`
+- `npm run graveyard -- --summary`
+- `npm run graveyard -- --blame`
+- `npm run graveyard -- config set includeFresh true`
 
 Installing the tool must not automatically modify the project's scripts or create its configuration through npm installation hooks. Those changes belong to the confirmed first-run setup or explicit `init` flow. Users may also prepare the required configuration and npm scripts manually.
 
