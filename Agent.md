@@ -8,7 +8,7 @@ Your friendly neighbourhood Project debt watcher
 SUMMARY ONLY NOT DETAILED TABLE
 > npx debt-watcher summary
 
-After project setup with `npx debt-watcher init`, the shortcut is `npm run debt-summary`.
+After team setup, offered on first use or through `npx debt-watcher init`, the shortcut is `npm run debt-summary`.
 
 GRAVEYARD LIST (ALL BRANCHES ON LOCAL)
 > npx debt-watcher graveyard
@@ -115,7 +115,7 @@ It should not be that we are scanning the whole repo etc for the text in markers
 
 ## The build
 
-Build one npm package that supports both running through `npx` and installation as a project development dependency. The setup and distribution requirements are defined below.
+Build one npm package that supports running through `npx`, local installation, and global installation. The setup and distribution requirements are defined below.
 
 The first thing we will build will be the code check
 then we will do the branches
@@ -136,15 +136,22 @@ Support:
 - `npx debt-watcher summary`
 
 This usage must work in Git repositories without a package.json.
-Every repository must have a Debt Watcher configuration file before scanning, including when using `npx`. If it is missing during an interactive run, offer to create it from the default template simple y/n that as it is needed to do scan. If setup is declined, cancel the scan. Non-interactive and CI runs must report missing configuration with setup instructions instead of silently using defaults.
+Every repository must have a Debt Watcher configuration file before scanning, including when using `npx`. If it is missing during an interactive run, offer the setup choices below, with team setup recommended. If setup is declined, cancel the scan. Non-interactive and CI runs must report missing configuration with setup instructions instead of silently using defaults.
 `npx` uses the locally installed package when available; otherwise it can obtain the package through npm's cache. It does not necessarily download the package on every run.
 
 ### Install in a project
 
-Support installation with:
-`npm install --save-dev debt-watcher`
+Support both `npm install debt-watcher` and `npm install --save-dev debt-watcher`. Recommend in readme the development dependency form for team setup because the tool is used during development rather than by the live application.
 
 After installation, the same npx commands must run the local version.
+
+### Global installation
+
+Support `npm install -g debt-watcher`, then `debt-watcher graveyard`, `debt-watcher summary`, `debt-watcher save`, and `debt-watcher init` from any appropriate repository.
+
+Global, local, and `npx` usage must provide the same scanning features and use the same repository configuration. A global installation does not itself add a dependency or scripts to each repository; users can choose team setup when they want that integration.
+
+// note for later - what if global then where is config file etc
 
 ### Team dependency installation
 
@@ -166,23 +173,39 @@ After installation, the same npx commands must run the local version.
 - Users are responsible for configuring their build/deployment pipeline to exclude Debt Watcher and its configuration from the final production artifact or runtime. Keep them available in development and in CI jobs that run Debt Watcher.
 - Some build systems already exclude development tooling, so an explicit removal step won’t always be necessary.
 
-### Project setup with init
+### First-run setup and init
 
-Provide an explicit setup command:
+Offer setup when a reporting command encounters a missing configuration during an interactive run. Also provide an explicit command to run setup later:
 
 ```sh
-npm install --save-dev debt-watcher
 npx debt-watcher init
 ```
 
-The `init` command must:
+Globally installed users can run `debt-watcher init`. Users do not need to run `init` separately if they accept setup on first use or their repository already contains a valid configuration.
+
+Offer these choices, explaining the file changes and any dependency installation before requiring confirmation:
+
+1. **Team setup (recommended):** create the configuration, integrate the tool with the project's npm dependencies and scripts, and open the configuration file.
+2. **Configuration only:** create and open the configuration without adding a local dependency, package.json, or npm scripts. This supports repositories using global or `npx` execution.
+3. **Cancel:** make no project changes and cancel the requested scan because configuration is mandatory.
+
+Setup must create files in the repository being configured, not in the installed package or npm cache. It must use the default configuration template and open the file for editing rather than ask a questionnaire about each setting. If opening the editor fails, display the configuration's full path. Existing configuration must be reused and preserved.
+
+Team setup must:
 
 - Create the editable default configuration file when one does not exist.
-- Add the following npm scripts when a `package.json` exists in the project being configured.
-- Preserve unrelated package.json fields and existing scripts and configuration.
+- Create a minimal `package.json` when none exists, including in Python, Go, and other non-Node repositories. Set `"private": true` only in a newly created package.json to prevent accidental npm publication of that project; preserve an existing project's setting.
+- Add Debt Watcher as a local development dependency using npm, updating the package files and lockfile. Reuse an existing compatible local installation without unnecessary reinstallation or silently changing its dependency classification.
+- Add the npm scripts shown below to the existing or newly created package.json.
+- Ensure `node_modules/` is ignored by Git, creating or updating `.gitignore` while preserving existing entries. Do not ignore the shared configuration or package files.
+- Preserve unrelated package.json fields, dependencies, scripts, and configuration.
 - Ask before replacing conflicting scripts or existing configuration; without confirmation, preserve them. In non-interactive use, report conflicts without overwriting them.
 - Be safe to run repeatedly, leaving matching scripts and existing settings unchanged.
-- When no `package.json` exists, create only the configuration file and explain that npm script shortcuts were not added. Do not create a package.json just to scan a non-Node project.
+- Explain that the configuration and both package files should be committed so teammates can run `npm install` and use the same setup. Do not automatically stage or commit files.
+
+After successful first-run setup, continue the originally requested report using the repository configuration. Subsequent runs with valid configuration go straight to reporting. Remember cancelled automatic setup offers per repository in user-level settings; later runs with missing configuration should give a concise instruction to run `init` instead of repeatedly prompting. Explicit `init` must remain available regardless of a previous cancellation.
+
+CI and non-interactive report runs must not prompt, open an editor, install dependencies, or generate missing configuration. They use the committed configuration and already installed tooling; missing requirements produce clear errors.
 
 ```json
 {
@@ -198,7 +221,7 @@ Run them with:
 - `npm run graveyard`
 - `npm run debt-summary`
 
-Installing the tool must not automatically modify the project's scripts or create its configuration. Those changes belong to the explicit `init` command. Users may also add the scripts manually.
+Installing the tool must not automatically modify the project's scripts or create its configuration through npm installation hooks. Those changes belong to the confirmed first-run setup or explicit `init` flow. Users may also prepare the required configuration and npm scripts manually.
 
 ### Development and release
 
