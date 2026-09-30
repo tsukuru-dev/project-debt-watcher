@@ -1,0 +1,13 @@
+{
+  "name": "debt-watcher",
+  "version": "0.0.0",
+  "description": "Your friendly neighbourhood project debt watcher.",
+  "type": "module",
+  "bin": {
+    "debt-watcher": "dist/cli.js"
+  },
+  "files": [
+    "dist/",
+    "templates/"
+  ]
+}

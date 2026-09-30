@@ -1,0 +1,11 @@
+# Installed dependencies
+node_modules/
+
+# Generated build and test output
+/dist/
+/coverage/
+*.tsbuildinfo
+
+# Generated package archives and npm debug logs
+/debt-watcher-*.tgz
+npm-debug.log*

@@ -1,0 +1,14 @@
+{
+  "markers": [
+    "TODO",
+    "FIXME",
+    "HACK",
+    "DEPRECATED",
+    "TEMP",
+    "WORKAROUND"
+  ],
+  "includeFresh": false,
+  "showAuthors": true,
+  "order": "oldnew",
+  "reportDirectory": "./debt-watcher-reports"
+}
