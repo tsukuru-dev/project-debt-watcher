@@ -45,3 +45,5 @@ npm run debt-watcher -- config --copy-from global
 `--save latest` exports a cached report without rescanning or changing its view. It must take a separate execution path from new-report generation.
 
 The comment scanner is the first implementation stage. The stale-branch scanner comes next; issue scanners come last. Their future locations are `src/scanners/branches.ts` and `src/scanners/issues/`. The existing `src/git/branches.ts` serves branch selection for comment scanning and is separate from stale-branch detection.
+
+The comment scanner's branch-snapshot and committed-source reading APIs are now implemented, with tests for branch changes, worktrees, unusual filenames, binary data and size limits. They are not yet connected to report generation. See `scanning.md` for the current scope and limitations.
