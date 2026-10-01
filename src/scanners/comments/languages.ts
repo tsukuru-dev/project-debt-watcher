@@ -3,7 +3,7 @@ import { posix } from "node:path";
 export type SourceLanguage = "python" | "javascript" | "jsx" | "typescript" | "tsx"
   | "css" | "cpp" | "rust" | "go" | "django-template";
 
-// Candidate classification only. Each language still needs its own comment parser.
+// Candidate classification only; extractor support is implemented separately per language.
 const extensions: Readonly<Record<string, SourceLanguage>> = {
   ".py": "python", ".pyi": "python", ".pyw": "python",
   ".js": "javascript", ".mjs": "javascript", ".cjs": "javascript", ".jsx": "jsx",

@@ -1,12 +1,12 @@
-# Comment scanner: source-reading foundation
+# Comment scanner: current implementation
 
-The first scanner chunk implements branch selection and committed source reads. It does not yet identify comments, match markers, run blame, or produce findings. The `graveyard` command still reports that generation is pending.
+Branch selection, committed source reads, an initial JavaScript/TypeScript comment lexer, and CSS comment extraction are implemented. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
 
 `selectBranches` snapshots every named local branch by default. Remote scope snapshots existing remote-tracking branches from all remotes, excluding symbolic aliases such as `origin/HEAD`. Tags are excluded. An empty repository returns no branches. Detached HEAD does not add an unnamed branch to the set. Different branches pointing to the same commit remain separate snapshots.
 
 Each snapshot records the full ref, display name, scope and commit ID. Later reads use that immutable commit rather than resolving the branch again. Moving or deleting a branch during a scan therefore does not change the saved source snapshot. Files come from commits, not the staging area or working directory. Untracked files and uncommitted edits are not included in this layer.
 
-`listSourceFiles` enumerates regular tracked blobs throughout the commit tree, including executable source files. Symlinks and submodules are excluded. No implicit folder exclusions are applied: tracked source in a vendor/generated directory remains a candidate. Candidate extensions cover Python, JavaScript/Node, JSX, TypeScript, TSX, CSS, C++ and headers, Rust, Go, and HTML/Django templates. This classification selects a future parser; it does not mean those parsers are implemented yet.
+`listSourceFiles` enumerates regular tracked blobs throughout the commit tree, including executable source files. Symlinks and submodules are excluded. No implicit folder exclusions are applied: tracked source in a vendor/generated directory remains a candidate. Candidate extensions cover Python, JavaScript/Node, JSX, TypeScript, TSX, CSS, C++ and headers, Rust, Go, and HTML/Django templates. Classification selects a language-specific extractor; most language extractors are still pending.
 
 Filenames are preserved using Git's NUL-delimited tree output. Blob reads use full object IDs, so spaces, tabs, newlines, colons or shell characters in filenames are never interpreted as shell commands or revision expressions. The same APIs support SHA-1 and SHA-256 object IDs. Reads work from nested directories and linked worktrees without changing the checkout or index.
 
@@ -16,4 +16,43 @@ Branch listings and tree listings have bounded output buffers (8 MiB and 32 MiB 
 
 These reads require Git 2.45 or newer for `--no-lazy-fetch`. They do not fetch refs or missing objects, run text-conversion filters, or apply Git replacement objects. Partial clones with missing objects must be prepared through the user's normal Git workflow before scanning.
 
-Next chunk: comment extraction for one language family, tested independently of Git blame and report rendering. Other language parsers, marker matching, blame attribution and report integration follow as separate chunks.
+## Language-specific comment syntax
+
+Markers remain plain text such as `TODO` or `FIXME`. The language extractor determines which text is actually inside a comment before marker matching happens.
+
+| Language | Comment syntax | Status |
+| --- | --- | --- |
+| JavaScript / TypeScript / Node | `// ...`, `/* ... */`, including JSDoc | Initial lexer implemented, with limitations below |
+| JSX / TSX / React | JS comments in expressions, including `{/* ... */}`; plain JSX text is not a comment | Pending |
+| Python | `# ...`; quoted strings and triple-quoted docstrings are not comments | Pending |
+| C++ and headers | `// ...`, `/* ... */` | Pending |
+| Rust | `// ...`, `/* ... */`, including nested block comments | Pending |
+| Go | `// ...`, `/* ... */` | Pending |
+| CSS | `/* ... */` | Implemented for plain CSS; see scope below |
+| Django / HTML templates | `{# ... #}`, `{% comment %} ... {% endcomment %}`, `<!-- ... -->` | Pending |
+
+The requirements also include C, Ruby and PHP. Their classification and extraction support remain future chunks; this table does not imply all required languages are implemented.
+
+## Shared extraction helpers
+
+`source.ts` shares source-position lookup and comment-record construction. Each extractor supplies its newline rules and comment-body boundaries. String, escape and token rules remain language-specific. Both extractors return the same `CommentExtraction` type, ready for common marker matching and blame integration later.
+
+## JavaScript and TypeScript extraction
+
+`extractJavaScriptComments(source, language)` is a dependency-free lexer. It recognises line and block comments, skips quoted strings and supported regex literals, and enters `${...}` template expressions while leaving template text untouched. It preserves comment order, raw text, delimiter-free bodies, and positions for both. Positions use zero-based UTF-16 offsets, one-based lines/columns, and exclusive ends. Whitespace, JSDoc stars, UTF-8 BOMs, CRLF and Unicode line separators are retained in the original source representation.
+
+Successful extraction returns `status: "ok"` and the comments, including comments without debt markers. This is not a JavaScript/TypeScript compiler or complete grammar validator. Unterminated strings/comments/regexes/templates and unbalanced delimiters produce `status: "invalid"`. Syntax requiring an unimplemented rule produces `status: "unsupported"`. Both return a position and diagnostic with no partial comments. Future reporting must surface these diagnostics rather than report the file as debt-free.
+
+The first lexer chunk deliberately leaves JSX/TSX, decorators, escaped identifiers, legacy HTML-style JS comments, Unicode-set regexes and nested/literal opening brackets in regex classes unsupported. It also stops at uncertain regex-versus-division contexts, such as immediately after a closing brace, `await`/`yield`, ambiguous `>`/postfix `!`, or a TypeScript operand followed by a newline and slash. TypeScript angle-bracket assertions and generic arrows need a later rule. These restrictions can reject valid code; they must not silently trigger a plain-text marker search. Nested templates have a limit of 128 expression levels.
+
+No Git calls, file writes, source execution, module imports from scanned code or project configuration loading occur during extraction. Tests separately check the lexer and its use with committed-source reads. It is not yet wired into the report command.
+
+## CSS extraction
+
+`extractCssComments(source)` extracts non-nesting `/* ... */` comments from plain CSS. Quoted strings and unquoted URL tokens are skipped; `//` is not a CSS comment. Escapes, escaped/case-insensitive `url` names, and surrounding token boundaries follow the [CSS Syntax tokenization rules](https://www.w3.org/TR/css-syntax-3/#tokenization).
+
+Original text and UTF-16 offsets are retained. CSS line counting recognises CRLF, CR, LF and form feed; Unicode separators U+2028/U+2029 are not CSS newlines. CSS character replacement is applied only during token recognition, never to returned source text.
+
+Malformed strings, escapes, URLs or unterminated comments return `invalid` with a position and no partial comments. This is deliberately stricter than browser error recovery. It is a comment lexer, not a declaration validator; it does not validate properties, nesting or balanced braces. SCSS, Sass, Less and embedded HTML styles are outside this extractor's scope. It never fetches URLs, follows imports or executes source.
+
+Next chunks will add the other language extractors and expand unsupported JavaScript/TypeScript contexts, then connect marker matching, blame attribution and report generation.

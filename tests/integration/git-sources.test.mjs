@@ -7,6 +7,8 @@ import { runGit } from "../../dist/git/client.js";
 import { selectBranches } from "../../dist/git/branches.js";
 import { listSourceFiles, readSourceFile } from "../../dist/git/files.js";
 import { languageForPath } from "../../dist/scanners/comments/languages.js";
+import { extractJavaScriptComments } from "../../dist/scanners/comments/javascript.js";
+import { extractCssComments } from "../../dist/scanners/comments/css.js";
 
 function commit(f, repo, content = "// TODO: main\n") {
   writeFileSync(join(repo, "main.ts"), content);
@@ -171,4 +173,38 @@ test("SHA-256 repositories use the same snapshot and source-reading APIs", async
   const [file] = await listSourceFiles(id, context);
   assert.equal(file.blobId.length, 64);
   assert.deepEqual(await readSourceFile(file, context), { kind: "text", text: "// TODO: main\n" });
+});
+
+test("comment extraction consumes the committed source with original line positions", async (t) => {
+  const f = fixture(t), repo = f.repository(), context = { cwd: repo, env: f.env };
+  const source = 'const url: string = "https://example.invalid//TODO";\n/* FIXME committed */\n';
+  const id = commit(f, repo, source);
+  writeFileSync(join(repo, "main.ts"), "// TODO working copy only\n");
+  const [file] = await listSourceFiles(id, context);
+  const saved = await readSourceFile(file, context);
+  assert.equal(saved.kind, "text");
+  const extracted = extractJavaScriptComments(saved.text, file.language);
+  assert.equal(extracted.status, "ok");
+  assert.deepEqual(extracted.comments.map((c) => [c.text, c.start.line, c.start.column]), [[" FIXME committed ", 2, 1]]);
+  assert.equal(readFileSync(join(repo, "main.ts"), "utf8"), "// TODO working copy only\n");
+});
+
+test("CSS extraction reads committed styles without treating URLs or strings as comments", async (t) => {
+  const f = fixture(t), repo = f.repository(), context = { cwd: repo, env: f.env };
+  const path = join(repo, "style.css");
+  writeFileSync(path, 'a { background: url(https://host/*TODO*/image); content: "/* fake */"; }\n/* FIXME committed */\n');
+  f.git(repo, ["add", "style.css"]);
+  f.git(repo, ["commit", "--quiet", "-m", "CSS snapshot"]);
+  const [branch] = await selectBranches(context);
+  writeFileSync(path, "/* working copy only */");
+  const before = f.git(repo, ["status", "--porcelain=v1"]);
+  const [file] = await listSourceFiles(branch.commitId, context);
+  assert.equal(file.language, "css");
+  const saved = await readSourceFile(file, context);
+  assert.equal(saved.kind, "text");
+  const extracted = extractCssComments(saved.text);
+  assert.equal(extracted.status, "ok");
+  assert.deepEqual(extracted.comments.map((c) => [c.text, c.start.line, c.start.column]), [[" FIXME committed ", 2, 1]]);
+  assert.equal(f.git(repo, ["status", "--porcelain=v1"]), before);
+  assert.equal(readFileSync(path, "utf8"), "/* working copy only */");
 });

@@ -1,5 +1,6 @@
 /**
  * Scaffold: Extract language-aware comments, match configured markers, and attach Git history metadata.
- * Implementation will be added in a later build step.
+ * JS/TS and CSS extraction live in javascript.ts and css.ts. Git orchestration, marker matching
+ * and blame integration will be added in later build steps.
  */
 export {};
