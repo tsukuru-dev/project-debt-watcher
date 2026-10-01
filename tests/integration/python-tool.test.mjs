@@ -7,6 +7,7 @@ import { createPythonCommentExtractor } from "../../dist/scanners/comments/pytho
 import { extractPythonComments } from "../../dist/scanners/comments/python.js";
 import { listSourceFiles, readSourceFile } from "../../dist/git/files.js";
 import { selectBranches } from "../../dist/git/branches.js";
+import { pythonInterpolationCases } from "../helpers/python-interpolation-cases.mjs";
 
 // Optional system integration: never download Python just to run a test.
 const detected = createPythonCommentExtractor();
@@ -14,6 +15,17 @@ async function official(t) {
   const extractor = await detected;
   if (extractor.backend.kind !== "official") { t.skip(extractor.backend.reason); return; }
   return extractor;
+}
+
+for (const { name, source, comments, minor = 12 } of pythonInterpolationCases) {
+  test('official/fallback Python interpolation parity: ' + name, async (t) => {
+    const extractor = await official(t); if (!extractor) return;
+    if (Number(extractor.backend.version.split('.')[1]) < minor) { t.skip('Requires Python 3.' + minor); return; }
+    const actual = await extractor.extract(source);
+    assert.equal(actual.status, 'ok', JSON.stringify(actual));
+    assert.deepEqual(actual.comments.map((c) => c.text), comments);
+    assert.deepEqual(extractPythonComments(source), actual);
+  });
 }
 
 test("installed Python agrees with the fallback on supported syntax and original positions", async (t) => {
@@ -82,5 +94,6 @@ test("official Python uses committed Git source rather than the working file", a
   const result = await extractor.extract(saved.text);
   assert.equal(result.status, "ok", JSON.stringify(result));
   assert.deepEqual(result.comments.map((c) => c.text), [" TODO committed"]);
+  assert.deepEqual(extractPythonComments(saved.text), result);
   assert.equal(f.git(repo, ["status", "--porcelain=v1"]), before);
 });

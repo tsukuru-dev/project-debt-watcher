@@ -46,13 +46,14 @@ for (const unavailable of [undefined, new Error("ENOENT"), new Error("timeout"),
   { ...supported, compatible: false }, { ...supported, version: [2, 7, 18] },
   { ...supported, version: [3, 11, 9] }, { ...supported, version: [3, 15, 0] },
   { ...supported, protocol: 2 }]) {
-  test("Python unavailability/incompatibility selects a labelled limited fallback: " + JSON.stringify(unavailable), async () => {
+  test("Python unavailability/incompatibility selects a labelled fallback: " + JSON.stringify(unavailable), async () => {
     const fake = runtime([unavailable], unavailable === undefined ? [] : [executable]);
     const selected = await createPythonCommentExtractor({}, fake);
     assert.equal(selected.backend.kind, "builtin");
+    assert.equal(selected.backend.version, "2");
     assert.ok(selected.backend.reason);
     assert.deepEqual((await selected.extract('x="# hidden" # real')).comments.map((c) => c.text), [" real"]);
-    assert.equal((await selected.extract('f"{x}"')).status, "unsupported");
+    assert.deepEqual((await selected.extract('f"{x # expression\n}"')).comments.map((c) => c.text), [' expression']);
   });
 }
 

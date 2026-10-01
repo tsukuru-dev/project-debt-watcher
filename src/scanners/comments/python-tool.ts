@@ -12,7 +12,7 @@ export interface PythonExtractorOptions {
   env?: NodeJS.ProcessEnv;
 }
 export type PythonBackend = { kind: "official"; name: "python-tokenize"; version: string; executable: string }
-  | { kind: "builtin"; name: "debt-watcher-python"; version: "1"; reason: string };
+  | { kind: "builtin"; name: "debt-watcher-python"; version: "2"; reason: string };
 export interface PythonCommentExtractor {
   backend: PythonBackend;
   extract(source: string): Promise<CommentExtraction>;
@@ -125,7 +125,7 @@ export async function createPythonCommentExtractor(options: PythonExtractorOptio
     : failures.length ? failures.join("; ") : "No Python executable was found on PATH.";
   if (mode === "official") throw new Error(`Official Python extraction is unavailable. ${reason}`);
   return {
-    backend: { kind: "builtin", name: "debt-watcher-python", version: "1", reason },
+    backend: { kind: "builtin", name: "debt-watcher-python", version: "2", reason },
     async extract(source) { checkSize(source); return extractPythonComments(source); },
   };
 }

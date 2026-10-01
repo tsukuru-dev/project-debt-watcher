@@ -1,6 +1,6 @@
 # Comment scanner: current implementation
 
-Branch selection, committed source reads, initial JavaScript/TypeScript, Python and Ruby comment lexers, CSS comment extraction, and official Python/Ruby tool adapters are implemented. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
+Branch selection, committed source reads, JavaScript/TypeScript, Python and Ruby comment lexers, CSS comment extraction, and official Python/Ruby tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
 
 `selectBranches` snapshots every named local branch by default. Remote scope snapshots existing remote-tracking branches from all remotes, excluding symbolic aliases such as `origin/HEAD`. Tags are excluded. An empty repository returns no branches. Detached HEAD does not add an unnamed branch to the set. Different branches pointing to the same commit remain separate snapshots.
 
@@ -24,7 +24,7 @@ Markers remain plain text such as `TODO` or `FIXME`. The language extractor dete
 | --- | --- | --- |
 | JavaScript / TypeScript / Node | `// ...`, `/* ... */`, including JSDoc | Initial lexer implemented, with limitations below |
 | JSX / TSX / React | JS comments in expressions, including `{/* ... */}`; plain JSX text is not a comment | Pending |
-| Python | `# ...`; quoted strings and triple-quoted docstrings are not comments | Official tokenizer adapter plus limited built-in fallback |
+| Python | `# ...`, including comments inside f/t-string expressions; literal text and docstrings are not comments | Official tokenizer adapter plus built-in lexer; expanded interpolation checks await execution |
 | Ruby | `# ...`, column-one `=begin` / `=end` blocks | Ripper adapter plus limited built-in fallback; real-Ruby verification pending in the current environment |
 | C++ and headers | `// ...`, `/* ... */` | Pending |
 | Rust | `// ...`, `/* ... */`, including nested block comments | Pending |
@@ -70,11 +70,15 @@ The helper receives JSON source via stdin and runs with `-I -S -B`: isolated imp
 
 ### Built-in fallback
 
-`extractPythonComments(source)` recognises Python 3 `#` comments, including shebangs, encoding cookies and type comments. It skips ordinary, raw, bytes and triple-quoted strings/docstrings, with case-insensitive `r`, `u`, `b`, `br` and `rb` prefixes. It follows [Python's lexical rules](https://docs.python.org/3/reference/lexical_analysis.html) for quote escaping, physical line endings and line joining. Text and UTF-16 positions remain unchanged; CRLF, CR and LF end lines, while form feed and Unicode separators do not.
+`extractPythonComments(source)` recognises UTF-8 Python 3 `#` comments, including shebangs, encoding cookies and type comments. It skips ordinary, raw, bytes and triple-quoted strings/docstrings, with case-insensitive `r`, `u`, `b`, `br` and `rb` prefixes. Text and UTF-16 positions remain unchanged; CRLF, CR and LF end lines, while form feed and Unicode separators do not. The fallback backend version is now `2`, distinguishing this expanded implementation in future report metadata.
 
-F-strings and template strings (including raw combinations) return `unsupported` with no partial comments. Their expressions can contain real comments, so they require a dedicated follow-up rather than being skipped as ordinary text. Python 2 backtick syntax and active non-UTF-8 encoding declarations are also explicitly unsupported. Source reading currently supports UTF-8 only.
+F-strings and Python 3.14 template strings use expression-aware extraction, including `f`, `fr`, `rf`, `t`, `tr` and `rt` prefixes in any case and either short or triple quotes. The lexical model follows Python's [f-string and template-string rules](https://docs.python.org/3.14/reference/lexical_analysis.html#f-strings). It handles nested interpolation, reused quote styles, expression comments, escaped braces, raw escapes, named Unicode escapes, debug fields, conversions and nested format fields. Hashes in literal text and format-specifier text remain hidden; hashes in replacement expressions start real comments, including after nested strings or within bracketed expressions. A backslash before a brace does not suppress interpolation.
 
-Unterminated strings, invalid line-joining backslashes and NUL characters return `invalid` with a diagnostic position and no partial results. This lexer does not validate indentation, expression grammar, escape values or bytes-literal contents. It never invokes Python, resolves imports or executes source.
+Unterminated strings/fields, mismatched expression brackets, empty fields, invalid conversions, single literal closing braces, invalid line-joining backslashes and NUL characters return `invalid` with a position and no partial results. Interpolation scanner depth and expression bracket depth are each bounded at 128; exceeding either returns `unsupported`. Python 2 backticks and active non-UTF-8 encoding declarations remain unsupported under the existing source-reading policy.
+
+This lexer does not validate indentation, the full expression grammar, Unicode character names, all escape values or bytes-literal contents. It targets modern Python 3 lexical syntax rather than enforcing the grammar of a particular installed interpreter; for example, the fallback accepts t-strings even where the selected official Python 3.12/3.13 backend would reject them. Neither path executes scanned source. The official adapter still performs full syntax validation with `ast.parse`.
+
+New fallback cases cover interpolation boundaries, positions, malformed input and nesting limits, with a shared corpus for comparisons against an available official Python installation. These new checks have been written but not run, at the user's request; the expanded Python implementation must not yet be described as verified complete. Marker matching, blame and report integration remain separate pending work.
 
 ## Ruby extraction
 

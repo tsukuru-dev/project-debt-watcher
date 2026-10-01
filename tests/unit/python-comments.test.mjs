@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { extractPythonComments } from "../../dist/scanners/comments/python.js";
+import { pythonInterpolationCases } from "../helpers/python-interpolation-cases.mjs";
 
 function extract(source) {
   const result = extractPythonComments(source);
@@ -102,15 +103,50 @@ test("Python source positions preserve BOM, Unicode, CRLF and raw text", () => {
 });
 
 for (const prefix of ["f", "F", "fr", "fR", "Fr", "FR", "rf", "rF", "Rf", "RF", "t", "T", "tr", "tR", "Tr", "TR", "rt", "rT", "Rt", "RT"]) {
-  test("Python interpolation is explicitly deferred: " + prefix, () => {
+  test("Python interpolation prefix supports expression comments: " + prefix, () => {
     for (const delimiter of ['"', "'", '"""', "'''"]) {
-      const result = extractPythonComments(`# before\n${prefix}${delimiter}{value # real expression comment\n}${delimiter}`);
-      assert.equal(result.status, "unsupported");
-      assert.deepEqual(result.comments, []);
-      assert.deepEqual(result.diagnostic.position, { offset: 9, line: 2, column: 1 });
+      assert.deepEqual(bodies(`# before\n${prefix}${delimiter}# literal {value # real expression comment\n}${delimiter}`),
+        [' before', ' real expression comment']);
     }
   });
 }
+
+for (const { name, source, comments } of pythonInterpolationCases) {
+  test('Python fallback interpolation: ' + name, () => {
+    const extracted = extract(source);
+    assert.deepEqual(extracted.map((c) => c.text), comments);
+    for (const c of extracted) {
+      const precedingLines = source.slice(0, c.start.offset).split(/\r\n|\r|\n/u);
+      assert.equal(c.start.line, precedingLines.length);
+      assert.equal(c.start.column, precedingLines.at(-1).length + 1);
+    }
+  });
+}
+
+for (const source of [
+  'f"{}"', 'f"{ # no expression\n}"', 'f"{!r}"', 'f"{:x}"', 'f"{=}"', 'f"single }"',
+  'f"{value"', 'f"{value # missing close}"', 'f"{(value]}"', 'f"{value!}"', 'f"{value!q}"',
+  'f"{value!rr}"', 'f"{value!r!s}"', 'f"{value=other}"', 'f"{value:x"', 'f"{value:x\n}"',
+  't"{value:{width}"', 'f"text\nmore"', String.raw`f"\N{}"`, String.raw`f"\N{unclosed"`,
+]) {
+  test('Python malformed interpolation discards partial comments: ' + JSON.stringify(source), () => {
+    const result = extractPythonComments('# before\n' + source);
+    assert.equal(result.status, 'invalid', JSON.stringify(result));
+    assert.deepEqual(result.comments, []);
+    assert.ok(result.diagnostic.position.offset >= 9);
+    assert.ok(result.diagnostic.position.offset <= source.length + 9);
+  });
+}
+
+test('Python nested interpolation is bounded without throwing or retaining partial comments', () => {
+  let nested = 'value';
+  for (let i = 0; i < 140; i++) nested = 'f"{' + nested + '}"';
+  const result = extractPythonComments('# before\n' + nested);
+  assert.equal(result.status, 'unsupported');
+  assert.deepEqual(result.comments, []);
+  assert.match(result.diagnostic.message, /nesting/);
+  assert.equal(extractPythonComments('f"{' + '('.repeat(129) + 'value' + ')'.repeat(129) + '}"').status, 'unsupported');
+});
 
 for (const source of ['"open', "'open", '"""open', "'''open", '"bad\nline"', '"bad\rline"',
   String.raw`r"odd\"`, String.raw`b'odd\'`, '"last\\', "\\", "x = 1 \\ # invalid", "x = 1 \\ \n", "\0", '"\0"', "# \0"]) {
