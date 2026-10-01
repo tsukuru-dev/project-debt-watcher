@@ -46,4 +46,4 @@ npm run debt-watcher -- config --copy-from global
 
 The comment scanner is the first implementation stage. The stale-branch scanner comes next; issue scanners come last. Their future locations are `src/scanners/branches.ts` and `src/scanners/issues/`. The existing `src/git/branches.ts` serves branch selection for comment scanning and is separate from stale-branch detection.
 
-The comment scanner's branch-snapshot and committed-source reading APIs, plus dependency-free JavaScript/TypeScript, CSS and initial Python comment extractors, are implemented. They are not yet connected to report generation. See `scanning.md` for the language syntax table, current scope and explicit lexer limitations.
+The comment scanner's branch-snapshot and committed-source reading APIs, built-in JavaScript/TypeScript, CSS and Python extractors, and an official Python tokenizer adapter are implemented. They are not yet connected to report generation. Python extractor selection is an internal API; no new CLI flags or config keys are exposed in this chunk. See `scanning.md` for scope and limitations.

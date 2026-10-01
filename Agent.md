@@ -187,6 +187,16 @@ The markers should just be text and not include the // because we should be able
 
 It should not be that we are scanning the whole repo etc for the text in markers list but rather specifically comment/ comment syntax which means that our system should recognise what syntax is required for each language
 
+### Official language tools and built-in fallbacks
+
+- Prefer official language standard-library or compiler tooling when it exposes a suitable comment-extraction API. Official tools may be separate installations; do not substitute independent third-party parsers such as Babel or Tree-sitter.
+- Keep our own language-aware scanners as fallbacks when suitable official tooling is absent or incompatible, and for languages without a suitable official API. A fallback must explicitly report syntax it cannot safely scan; an unscanned file must never be presented as having zero debt.
+- Detect existing tools and verify supported versions and required capabilities before selecting an extractor. Do not automatically install runtimes, compiler components, parser packages or dependencies. Discuss proposed development installations with the user first.
+- Pass committed source text as data to a fixed extraction helper. Never execute scanned code, import project modules, load project startup hooks, render templates or run project builds to extract comments. Bound subprocess time and output, preserve original text/positions, and leave the checkout unchanged.
+- Select an extractor once per scan. If an already selected official tool reports malformed source, crashes, times out or returns invalid output, report that failure instead of silently retrying with the fallback.
+- Record the extractor name/version and any fallback reason for future report metadata. Provide explicit official/built-in selection and interpreter selection for reproducible CI; introduce user-facing settings when this is connected to report generation.
+- Implement integrations incrementally, starting with Python's standard-library `tokenize`. The initial Python adapter accepts versions 3.12 through 3.14 after a capability probe, retaining the existing limited Python lexer as fallback. Other language integrations remain separate build steps.
+
 ## The build
 
 Build one npm package that supports running through `npx`, local installation, and global installation. The setup and distribution requirements are defined below.
