@@ -9,6 +9,7 @@ import { listSourceFiles, readSourceFile } from "../../dist/git/files.js";
 import { languageForPath } from "../../dist/scanners/comments/languages.js";
 import { extractJavaScriptComments } from "../../dist/scanners/comments/javascript.js";
 import { extractCssComments } from "../../dist/scanners/comments/css.js";
+import { extractPythonComments } from "../../dist/scanners/comments/python.js";
 
 function commit(f, repo, content = "// TODO: main\n") {
   writeFileSync(join(repo, "main.ts"), content);
@@ -207,4 +208,24 @@ test("CSS extraction reads committed styles without treating URLs or strings as 
   assert.deepEqual(extracted.comments.map((c) => [c.text, c.start.line, c.start.column]), [[" FIXME committed ", 2, 1]]);
   assert.equal(f.git(repo, ["status", "--porcelain=v1"]), before);
   assert.equal(readFileSync(path, "utf8"), "/* working copy only */");
+});
+
+test("Python extraction reads committed comments and excludes docstrings and raw string contents", async (t) => {
+  const f = fixture(t), repo = f.repository(), context = { cwd: repo, env: f.env };
+  const path = join(repo, "main.py");
+  writeFileSync(path, '"""# TODO docstring"""\nx = r"# FIXME raw text"\n# TODO committed\n');
+  f.git(repo, ["add", "main.py"]);
+  f.git(repo, ["commit", "--quiet", "-m", "Python snapshot"]);
+  const [branch] = await selectBranches(context);
+  writeFileSync(path, "# working copy only\n");
+  const before = f.git(repo, ["status", "--porcelain=v1"]);
+  const [file] = await listSourceFiles(branch.commitId, context);
+  assert.equal(file.language, "python");
+  const saved = await readSourceFile(file, context);
+  assert.equal(saved.kind, "text");
+  const extracted = extractPythonComments(saved.text);
+  assert.equal(extracted.status, "ok");
+  assert.deepEqual(extracted.comments.map((c) => [c.text, c.start.line, c.start.column]), [[" TODO committed", 3, 1]]);
+  assert.equal(f.git(repo, ["status", "--porcelain=v1"]), before);
+  assert.equal(readFileSync(path, "utf8"), "# working copy only\n");
 });

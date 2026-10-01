@@ -4,7 +4,7 @@ The TypeScript build, configuration commands, team setup, and automatic first-us
 
 The package uses one executable named `debt-watcher`. This build targets Node.js 22 or newer. npm is needed for installation. Git locates repository configuration and will also be used for scanning; personal configuration actions need no Git repository except when copying from one. See `../Agent.md` for the complete requirements.
 
-The committed-source reading layer requires Git 2.45 or newer so it can disable automatic fetching of missing objects. JavaScript/TypeScript and CSS comment extractors are also implemented without additional dependencies. Broader syntax support and report generation remain pending; see `scanning.md`.
+The committed-source reading layer requires Git 2.45 or newer so it can disable automatic fetching of missing objects. JavaScript/TypeScript, CSS and initial Python comment extractors are also implemented without additional dependencies. Broader syntax support and report generation remain pending; see `scanning.md`.
 
 From this package's source directory:
 

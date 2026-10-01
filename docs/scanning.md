@@ -1,6 +1,6 @@
 # Comment scanner: current implementation
 
-Branch selection, committed source reads, an initial JavaScript/TypeScript comment lexer, and CSS comment extraction are implemented. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
+Branch selection, committed source reads, initial JavaScript/TypeScript and Python comment lexers, and CSS comment extraction are implemented. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
 
 `selectBranches` snapshots every named local branch by default. Remote scope snapshots existing remote-tracking branches from all remotes, excluding symbolic aliases such as `origin/HEAD`. Tags are excluded. An empty repository returns no branches. Detached HEAD does not add an unnamed branch to the set. Different branches pointing to the same commit remain separate snapshots.
 
@@ -24,7 +24,7 @@ Markers remain plain text such as `TODO` or `FIXME`. The language extractor dete
 | --- | --- | --- |
 | JavaScript / TypeScript / Node | `// ...`, `/* ... */`, including JSDoc | Initial lexer implemented, with limitations below |
 | JSX / TSX / React | JS comments in expressions, including `{/* ... */}`; plain JSX text is not a comment | Pending |
-| Python | `# ...`; quoted strings and triple-quoted docstrings are not comments | Pending |
+| Python | `# ...`; quoted strings and triple-quoted docstrings are not comments | Initial lexer implemented; f-strings and template strings pending |
 | C++ and headers | `// ...`, `/* ... */` | Pending |
 | Rust | `// ...`, `/* ... */`, including nested block comments | Pending |
 | Go | `// ...`, `/* ... */` | Pending |
@@ -35,7 +35,7 @@ The requirements also include C, Ruby and PHP. Their classification and extracti
 
 ## Shared extraction helpers
 
-`source.ts` shares source-position lookup and comment-record construction. Each extractor supplies its newline rules and comment-body boundaries. String, escape and token rules remain language-specific. Both extractors return the same `CommentExtraction` type, ready for common marker matching and blame integration later.
+`source.ts` shares source-position lookup and comment-record construction. Each extractor supplies its newline rules and comment-body boundaries. String, escape and token rules remain language-specific. All extractors return the same `CommentExtraction` type, ready for common marker matching and blame integration later.
 
 ## JavaScript and TypeScript extraction
 
@@ -55,4 +55,12 @@ Original text and UTF-16 offsets are retained. CSS line counting recognises CRLF
 
 Malformed strings, escapes, URLs or unterminated comments return `invalid` with a position and no partial comments. This is deliberately stricter than browser error recovery. It is a comment lexer, not a declaration validator; it does not validate properties, nesting or balanced braces. SCSS, Sass, Less and embedded HTML styles are outside this extractor's scope. It never fetches URLs, follows imports or executes source.
 
-Next chunks will add the other language extractors and expand unsupported JavaScript/TypeScript contexts, then connect marker matching, blame attribution and report generation.
+## Python extraction
+
+`extractPythonComments(source)` recognises Python 3 `#` comments, including shebangs, encoding cookies and type comments. It skips ordinary, raw, bytes and triple-quoted strings/docstrings, with case-insensitive `r`, `u`, `b`, `br` and `rb` prefixes. It follows [Python's lexical rules](https://docs.python.org/3/reference/lexical_analysis.html) for quote escaping, physical line endings and line joining. Text and UTF-16 positions remain unchanged; CRLF, CR and LF end lines, while form feed and Unicode separators do not.
+
+F-strings and template strings (including raw combinations) return `unsupported` with no partial comments. Their expressions can contain real comments, so they require a dedicated follow-up rather than being skipped as ordinary text. Python 2 backtick syntax and active non-UTF-8 encoding declarations are also explicitly unsupported. Source reading currently supports UTF-8 only.
+
+Unterminated strings, invalid line-joining backslashes and NUL characters return `invalid` with a diagnostic position and no partial results. This lexer does not validate indentation, expression grammar, escape values or bytes-literal contents. It never invokes Python, resolves imports or executes source.
+
+Next chunks will add Python interpolation and the other language extractors, expand unsupported JavaScript/TypeScript contexts, then connect marker matching, blame attribution and report generation.
