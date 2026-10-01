@@ -5,6 +5,10 @@ export interface SharedArguments {
   global?: boolean;
 }
 
+export interface InitArguments extends SharedArguments {
+  dryRun?: boolean;
+}
+
 export interface ReportFilters {
   type?: Array<"code" | "branches" | "issues">;
   author?: string;

@@ -54,11 +54,11 @@ export function fixture(t) {
     return path;
   }
 
-  async function invoke(args, cwd = root, environment = env, terminal) {
+  async function invoke(args, cwd = root, environment = env, terminal, setup) {
     let stdout = "";
     let stderr = "";
     const status = await runCli(args, {
-      version: "0.0.0", cwd, env: environment, terminal,
+      version: "0.0.0", cwd, env: environment, terminal, setup,
       stdout: (text) => { stdout += text; }, stderr: (text) => { stderr += text; },
     });
     return { status, stdout, stderr };

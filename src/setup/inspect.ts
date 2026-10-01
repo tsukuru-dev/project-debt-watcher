@@ -43,6 +43,9 @@ function jsonObject(text: string): Record<string, unknown> {
   return value;
 }
 
+// Reused by the apply flow after taking fresh snapshots.
+export { object as isRecord, jsonObject as parsePackageObject };
+
 interface IgnoreRule { source: string; line: string; pattern: string }
 
 async function ignoreRules(paths: string[], context: GitContext): Promise<Map<string, IgnoreRule>> {
@@ -73,6 +76,9 @@ export async function inspectSetup(repo: string | undefined, context: GitContext
   const gitContext = { ...context, cwd: repositoryRoot };
   const items: SetupItem[] = [];
   const add = (id: string, status: SetupItem["status"], message: string) => { items.push({ id, status, message }); };
+  if (process.platform === "win32" && repositoryRoot.includes("&")) {
+    add("windows-shell-path", "review", "This Windows checkout path contains &. npm-generated command shims can fail in this path; use a checkout path without & before team setup.");
+  }
   const [config, manifest, lock, ignore, installed, shrinkwrap] = await Promise.all([
     inspectFile(join(repositoryRoot, CONFIG_FILENAME)),
     inspectFile(join(repositoryRoot, "package.json")),
@@ -166,6 +172,23 @@ export async function inspectSetup(repo: string | undefined, context: GitContext
     }
   }
   if (shrinkwrap.state !== "missing") add("shrinkwrap", "review", "npm-shrinkwrap.json exists or cannot be read. Resolve its lockfile precedence before planning package-lock.json changes.");
+  for (const path of ["yarn.lock", "pnpm-lock.yaml", "bun.lock", "bun.lockb"]) {
+    if ((await inspectFile(join(repositoryRoot, path))).state !== "missing") {
+      add("package-manager-lock", "review", path + " exists or cannot be read. Resolve the package-manager workflow before npm setup.");
+    }
+  }
+  for (const path of ["node_modules", "node_modules/debt-watcher"]) {
+    try {
+      const stats = await lstat(join(repositoryRoot, path));
+      if (!stats.isDirectory() || stats.isSymbolicLink()) {
+        add("installation-path", "conflict", path + " is not a regular directory. Resolve linked or conflicting installation paths before npm setup.");
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        add("installation-path", "conflict", "Cannot inspect " + path + "; resolve its access error before npm setup.");
+      }
+    }
+  }
 
   if (ignore.state === "error") add("gitignore-file", "conflict", ".gitignore: " + ignore.message);
   const shared = [CONFIG_FILENAME, "package.json", "package-lock.json"];

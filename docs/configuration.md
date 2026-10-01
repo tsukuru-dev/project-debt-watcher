@@ -34,7 +34,7 @@ Each listing prints the selected file's absolute path. Listing is read-only: it 
 
 Missing files, invalid JSON, invalid settings, and file-access errors fail with the selected path and a clear explanation. Missing repository configuration never falls back to another branch or personal defaults. Saved values must provide all required settings.
 
-Until team setup is built, prepare a repository configuration manually from the supplied template, or explicitly copy existing personal settings as described below. No actual repository or personal configuration is created just by building the package.
+Use `debt-watcher init` for confirmed team setup, prepare a repository configuration manually from the supplied template, or explicitly copy existing personal settings as described below. See `installation.md` for development-build installation limitations. No actual repository or personal configuration is created just by building the package.
 
 ## Editing saved settings
 
@@ -108,6 +108,6 @@ Personal defaults use the same format and filename:
 
 Personal configuration actions need no repository or Git executable except when copying from a repository. An explicit `--global config --set`, `--add`, or `--remove` creates missing personal defaults from the supplied template after validating the complete requested change. Interactive `--global config` also initialises them before opening. Listing remains read-only and does not initialise missing defaults. Invalid existing personal files are preserved and reported.
 
-General first-run setup, detecting global installations for automatic personal initialisation, and team setup remain future stages. Runtime snapshots and declined-setup state will be stored separately from configuration.
+Explicit team setup through `init` is implemented. General first-run setup, choosing personal defaults during setup, and detecting global installations for automatic personal initialisation remain future stages. Runtime snapshots and declined-setup state will be stored separately from configuration.
 
 CLI overrides will apply only to the current report. Permanent edits and copies must validate settings before writing. Configured relative report directories resolve against the repository root; relative `--output` paths resolve against the invocation's working directory. Loading config does not require the report directory to exist; destination checks and creation prompts belong to saving reports.

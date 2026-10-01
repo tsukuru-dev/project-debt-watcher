@@ -9,16 +9,17 @@ import {
   validateScope,
   type ConfigArguments,
   type GraveyardArguments,
-  type SharedArguments,
+  type InitArguments,
 } from "./commands/arguments.js";
 import { runConfig, type ConfigurationInteraction } from "./commands/config.js";
 import { runGraveyard } from "./commands/graveyard.js";
 import { runInit } from "./commands/init.js";
+import type { TeamSetupContext } from "./setup/team.js";
 
 export interface CommandHandlers {
   graveyard(options: GraveyardArguments): void | Promise<void>;
   config(options: ConfigArguments): void | Promise<void>;
-  init(options: SharedArguments): void | Promise<void>;
+  init(options: InitArguments): void | Promise<void>;
 }
 
 export interface CliOptions {
@@ -29,6 +30,7 @@ export interface CliOptions {
   stderr?: (text: string) => void;
   handlers?: Partial<CommandHandlers>;
   terminal?: ConfigurationInteraction;
+  setup?: Pick<TeamSetupContext, "npm" | "packageSpec" | "startingConfiguration">;
 }
 
 function createProgram(options: CliOptions): Command {
@@ -44,7 +46,10 @@ function createProgram(options: CliOptions): Command {
     init: (values) => runInit(values, {
       cwd: options.cwd ?? process.cwd(),
       env: options.env ?? process.env,
+      version: options.version,
       writeOutput,
+      ...options.terminal,
+      ...options.setup,
     }),
     ...options.handlers,
   };
@@ -61,7 +66,7 @@ function createProgram(options: CliOptions): Command {
     })
     .showHelpAfterError("Run 'debt-watcher --help' for usage.")
     .exitOverride()
-    .addHelpText("after", "\nConfiguration commands and read-only setup inspection are available. Reports and applying team setup are not implemented yet.");
+    .addHelpText("after", "\nConfiguration and confirmed team setup are available. Reports and automatic first-use setup are not implemented yet.");
 
   program.command("graveyard")
     .description("Generate or save a detailed report or summary (implementation pending)")
@@ -129,9 +134,10 @@ function createProgram(options: CliOptions): Command {
     });
 
   program.command("init")
-    .description("Inspect team setup and preview needed changes (read-only; applying setup is pending)")
+    .description("Inspect and apply team setup after confirmation")
+    .option("--dry-run", "Preview setup without prompts, npm calls, or file changes")
     .action(async (_localOptions, command: Command) => {
-      const values = command.optsWithGlobals<SharedArguments>();
+      const values = command.optsWithGlobals<InitArguments>();
       validateScope("init", values);
       await handlers.init(values);
     });

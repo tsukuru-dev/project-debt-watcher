@@ -9,7 +9,7 @@ export class MissingConfigurationError extends Error {
     const scope = location.scope === "global" ? "personal" : "repository";
     const guidance = location.scope === "global"
       ? "Run debt-watcher --global config --set fresh=30 to create personal defaults."
-      : "Create this file from the supplied templates/debt-watcher.config.json. Automatic setup is not implemented yet.";
+      : "Run debt-watcher init for team setup, or create this file from the supplied templates/debt-watcher.config.json.";
     super(`Missing ${scope} configuration: "${location.path}". ${guidance}`);
     this.name = "MissingConfigurationError";
   }

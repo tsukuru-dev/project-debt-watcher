@@ -39,7 +39,7 @@ test("init previews a non-Node repository without changing files, Git state, or 
   const repo = f.repository();
   writeFileSync(join(repo, "main.py"), "print('hello')\n");
   const before = readdirSync(repo).sort();
-  const result = await f.invoke(["init"], repo, f.env, {
+  const result = await f.invoke(["init", "--dry-run"], repo, f.env, {
     interactive: true,
     confirm: async () => assert.fail("Inspection must not prompt"),
     openEditor: async () => assert.fail("Inspection must not open an editor"),
@@ -51,7 +51,7 @@ test("init previews a non-Node repository without changing files, Git state, or 
   assert.match(result.stdout, /local development dependency/);
   assert.match(result.stdout, /Add npm script/);
   assert.match(result.stdout, /Create the repository .gitignore/);
-  assert.match(result.stdout, /Applying setup is not implemented/);
+  assert.match(result.stdout, /without --dry-run to apply/);
   assert.deepEqual(readdirSync(repo).sort(), before);
   assert.deepEqual(readdirSync(f.home), []);
   assert.equal(f.git(repo, ["diff", "--cached"]), "");
@@ -66,7 +66,7 @@ test("existing setup entries are preserved and inspection is repeatable", async 
   const first = await inspect(f, repo);
   assert.ok(first.items.every((entry) => entry.status === "present"), JSON.stringify(first));
   assert.deepEqual(await inspect(f, repo), first);
-  const result = await f.invoke(["init"], repo);
+  const result = await f.invoke(["init", "--dry-run"], repo);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /not a compatibility check/);
   assert.deepEqual(paths.map((path) => readFileSync(join(repo, path), "utf8")), before);
@@ -92,7 +92,7 @@ test("conflicting scripts and existing dependency classifications require review
   const result = await inspect(f, repo);
   assert.equal(item(result, "script").status, "conflict");
   assert.equal(item(result, "dependency").status, "review");
-  const cli = await f.invoke(["init"], repo);
+  const cli = await f.invoke(["init", "--dry-run"], repo);
   assert.equal(cli.status, 1);
   assert.match(cli.stdout, /Ask before replacing/);
   assert.match(cli.stderr, /requiring review/);
@@ -158,7 +158,7 @@ test("--repo and nested invocations select the intended checkout despite inherit
   const nested = join(second, "src");
   mkdirSync(nested);
   const env = { ...f.env, GIT_DIR: join(first, ".git"), GIT_WORK_TREE: first };
-  const result = await f.invoke(["init", "--repo", relative(first, nested)], first, env);
+  const result = await f.invoke(["init", "--dry-run", "--repo", relative(first, nested)], first, env);
   assert.equal(result.status, 0, result.stderr);
   assert.ok(result.stdout.startsWith("Setup inspection: " + second));
   assert.match(result.stdout, /Keep the existing valid shared configuration/);

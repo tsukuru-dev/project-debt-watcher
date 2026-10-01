@@ -1,6 +1,6 @@
 # Installation
 
-The TypeScript build, command routing, help, version output, configuration commands, and read-only team setup inspection are implemented. Reports and applying team setup remain future build stages.
+The TypeScript build, configuration commands, setup inspection, and confirmed application of team setup are implemented. Reports and the automatic first-use setup experience remain future build stages.
 
 The package uses one executable named `debt-watcher`. This build targets Node.js 22 or newer. npm is needed for installation. Git locates repository configuration and will also be used for scanning; personal configuration actions need no Git repository except when copying from one. See `../Agent.md` for the complete requirements.
 
@@ -24,14 +24,14 @@ The development `debt-watcher` script runs `node dist/cli.js` so changes can be 
 
 Commander is the runtime command-line parser. TypeScript and Node.js type definitions are development dependencies. npm maintains `package-lock.json`; do not hand-edit it. There are no installation hooks that create configuration or change another project's files.
 
-For consuming projects, confirmed team setup will create or reuse the shared config, add the local development dependency and `debt-watcher` npm script, and let npm update the package files. Commit the shared config, `package.json`, and `package-lock.json`; ignore `node_modules/`.
+For consuming projects, confirmed team setup creates or reuses the shared config, adds the local development dependency and `debt-watcher` npm script, and lets npm update the package files. Commit the shared config, `package.json`, `package-lock.json`, and any `.gitignore` changes; ignore `node_modules/`.
 
 ## Preview team setup
 
 From this development checkout, inspect a separate consumer repository:
 
 ```sh
-npm run debt-watcher -- init --repo "../consumer-project"
+npm run debt-watcher -- init --dry-run --repo "../consumer-project"
 ```
 
 The inspection locates the selected worktree root and reports:
@@ -44,7 +44,31 @@ The inspection locates the selected worktree root and reports:
 
 `PRESENT` means an inspected entry exists and passes the checks above. `MISSING` describes a proposed addition; `CONFLICT` and `REVIEW` identify decisions or corrections needed before applying setup. Dependency compatibility, executable integrity, and full lockfile consistency are deliberately left to npm verification in the apply step. Inspection never executes npm or project scripts, contacts the registry, creates personal defaults, or changes files.
 
-The command is safe to repeat in interactive terminals or CI. Exit code 0 means inspection succeeded with no conflicts/review items, even if setup is missing; it does not certify that the repository is fully configured. Exit code 1 signals inspection errors or review items. Applying the plan, confirmation prompts, and first-use setup offers are still pending. Inspecting Debt Watcher's own source package reports a self-dependency conflict; use a separate consumer repository to try the future installation flow.
+The preview is safe to repeat in interactive terminals or CI. Exit code 0 means inspection succeeded with no conflicts/review items, even if setup is missing; it does not certify that the repository is fully configured. Exit code 1 signals inspection errors or review items. Inspecting Debt Watcher's own source package reports a self-dependency conflict; use a separate consumer repository for setup.
+
+## Apply team setup
+
+```sh
+npm run debt-watcher -- init --repo "../consumer-project"
+```
+
+Plain `init` shows the inspection and planned changes, then asks for confirmation. A conflicting `debt-watcher` npm script requires a separate confirmation before any writes. Declining either prompt leaves the project unchanged. Existing valid config and unrelated package fields are preserved. A new manifest gets `"private": true`; an existing private setting is never changed.
+
+New configuration currently uses the bundled 30-day template. Personal-default selection, opening the config after setup, and first-use report continuation belong to the next build chunk. Existing personal defaults are not altered.
+
+New dependencies use the released CLI's exact version in `devDependencies`. Existing Debt Watcher declarations in `dependencies` are preserved rather than silently moved. Optional-only, peer-only, duplicate declarations, other package-manager lockfiles, workspaces, shrinkwrap, ignored shared files, and linked installation directories require manual resolution first. On Windows, paths containing `&` are also flagged because npm's generated command shims can fail there.
+
+Setup checks the installed package, executable entry and npm shortcut, lockfile version/spec agreement, and npm's dependency-tree validation before reusing an installation. A complete setup is a no-op, including in CI. Changes require an interactive terminal; use `--dry-run` for a non-interactive preview.
+
+When installation is needed, npm runs in the selected repository and generates/updates the lockfile. It may install or reconcile the project's other dependencies as well. Lifecycle scripts are disabled during this setup operation; projects that need native builds or other install hooks can run their normal npm workflow separately. The tool never hand-constructs lock entries, stages files, commits, or removes tracked `node_modules` files.
+
+Setup rechecks the checkout and file contents after confirmation. If npm or later verification fails, the command returns an error and describes possible partial changes. It does not claim success or attempt to undo npm's dependency changes. Review the working-tree changes, fix the cause, and rerun `init`. Existing valid configuration is preserved; missing config is created only after dependency verification.
+
+## Testing before publication
+
+This package is still at development version `0.0.0`. Setup refuses to fetch that version as a new registry dependency. The integration tests pack our actual build into a local archive, apply setup in a temporary consumer repo using that archive, check repeat runs and npm script execution, and verify a fresh consumer can install from the generated lockfile. These tests run offline and do not install globally.
+
+For a manual development check, install a locally packed archive into a separate consumer repository first, then run `init` there to complete the shared config/script/ignore integration. Local archive paths are development fixtures, not a substitute for a published package in the team's final committed dependency list.
 
 `npm pack` builds through `prepack` and produces an archive containing compiled JavaScript, the configuration template, package metadata, and npm's automatically included documentation. It does not publish the package. The template is valid and currently sets freshness to 30 days; see `configuration.md` for manual setup while automatic setup is pending.
 

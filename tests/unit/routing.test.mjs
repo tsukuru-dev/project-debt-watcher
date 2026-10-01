@@ -24,6 +24,7 @@ const routes = [
   [["graveyard"], "graveyard", {}],
   [["config"], "config", {}],
   [["init", "--repo", "../other project"], "init", { repo: "../other project" }],
+  [["init", "--dry-run", "--repo", "../other project"], "init", { dryRun: true, repo: "../other project" }],
   [["graveyard", "--summary"], "graveyard", { summary: "types" }],
   [["graveyard", "--summary", "types"], "graveyard", { summary: "types" }],
   [["graveyard", "--save", "--summary", "blame", "--filter", "includefresh=false"],
