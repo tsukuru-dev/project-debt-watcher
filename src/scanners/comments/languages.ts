@@ -1,7 +1,7 @@
 import { posix } from "node:path";
 
 export type SourceLanguage = "python" | "javascript" | "jsx" | "typescript" | "tsx"
-  | "css" | "cpp" | "rust" | "go" | "django-template";
+  | "css" | "cpp" | "rust" | "go" | "ruby" | "django-template";
 
 // Candidate classification only; extractor support is implemented separately per language.
 const extensions: Readonly<Record<string, SourceLanguage>> = {
@@ -11,10 +11,12 @@ const extensions: Readonly<Record<string, SourceLanguage>> = {
   ".css": "css", ".cpp": "cpp", ".cc": "cpp", ".cxx": "cpp", ".c++": "cpp",
   ".h": "cpp", ".hh": "cpp", ".hpp": "cpp", ".hxx": "cpp",
   ".rs": "rust", ".go": "go",
+  ".rb": "ruby", ".rake": "ruby", ".gemspec": "ruby",
   ".html": "django-template", ".htm": "django-template", ".djhtml": "django-template", ".django": "django-template",
 };
 
 export function languageForPath(path: string): SourceLanguage | undefined {
+  if (["Gemfile", "Rakefile"].includes(posix.basename(path))) return "ruby";
   const extension = posix.extname(path);
   return extension === ".C" ? "cpp" : extensions[extension.toLowerCase()];
 }

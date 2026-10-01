@@ -1,12 +1,12 @@
 # Comment scanner: current implementation
 
-Branch selection, committed source reads, initial JavaScript/TypeScript and Python comment lexers, CSS comment extraction, and an official Python tokenizer adapter are implemented. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
+Branch selection, committed source reads, initial JavaScript/TypeScript, Python and Ruby comment lexers, CSS comment extraction, and official Python/Ruby tool adapters are implemented. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
 
 `selectBranches` snapshots every named local branch by default. Remote scope snapshots existing remote-tracking branches from all remotes, excluding symbolic aliases such as `origin/HEAD`. Tags are excluded. An empty repository returns no branches. Detached HEAD does not add an unnamed branch to the set. Different branches pointing to the same commit remain separate snapshots.
 
 Each snapshot records the full ref, display name, scope and commit ID. Later reads use that immutable commit rather than resolving the branch again. Moving or deleting a branch during a scan therefore does not change the saved source snapshot. Files come from commits, not the staging area or working directory. Untracked files and uncommitted edits are not included in this layer.
 
-`listSourceFiles` enumerates regular tracked blobs throughout the commit tree, including executable source files. Symlinks and submodules are excluded. No implicit folder exclusions are applied: tracked source in a vendor/generated directory remains a candidate. Candidate extensions cover Python, JavaScript/Node, JSX, TypeScript, TSX, CSS, C++ and headers, Rust, Go, and HTML/Django templates. Classification selects a language-specific extractor; most language extractors are still pending.
+`listSourceFiles` enumerates regular tracked blobs throughout the commit tree, including executable source files. Symlinks and submodules are excluded. No implicit folder exclusions are applied: tracked source in a vendor/generated directory remains a candidate. Candidate extensions cover Python, Ruby, JavaScript/Node, JSX, TypeScript, TSX, CSS, C++ and headers, Rust, Go, and HTML/Django templates. Classification selects a language-specific extractor; several language extractors are still pending.
 
 Filenames are preserved using Git's NUL-delimited tree output. Blob reads use full object IDs, so spaces, tabs, newlines, colons or shell characters in filenames are never interpreted as shell commands or revision expressions. The same APIs support SHA-1 and SHA-256 object IDs. Reads work from nested directories and linked worktrees without changing the checkout or index.
 
@@ -25,13 +25,14 @@ Markers remain plain text such as `TODO` or `FIXME`. The language extractor dete
 | JavaScript / TypeScript / Node | `// ...`, `/* ... */`, including JSDoc | Initial lexer implemented, with limitations below |
 | JSX / TSX / React | JS comments in expressions, including `{/* ... */}`; plain JSX text is not a comment | Pending |
 | Python | `# ...`; quoted strings and triple-quoted docstrings are not comments | Official tokenizer adapter plus limited built-in fallback |
+| Ruby | `# ...`, column-one `=begin` / `=end` blocks | Ripper adapter plus limited built-in fallback; real-Ruby verification pending in the current environment |
 | C++ and headers | `// ...`, `/* ... */` | Pending |
 | Rust | `// ...`, `/* ... */`, including nested block comments | Pending |
 | Go | `// ...`, `/* ... */` | Pending |
 | CSS | `/* ... */` | Implemented for plain CSS; see scope below |
 | Django / HTML templates | `{# ... #}`, `{% comment %} ... {% endcomment %}`, `<!-- ... -->` | Pending |
 
-The requirements also include C, Ruby and PHP. Their classification and extraction support remain future chunks; this table does not imply all required languages are implemented.
+Ruby classification includes `.rb`, `.rake`, `.gemspec`, and exact filenames `Gemfile` and `Rakefile`. ERB templates are not covered. The requirements also include C and PHP. Their classification and extraction support remain future chunks; this table does not imply all required languages are implemented.
 
 ## Shared extraction helpers
 
@@ -74,5 +75,25 @@ The helper receives JSON source via stdin and runs with `-I -S -B`: isolated imp
 F-strings and template strings (including raw combinations) return `unsupported` with no partial comments. Their expressions can contain real comments, so they require a dedicated follow-up rather than being skipped as ordinary text. Python 2 backtick syntax and active non-UTF-8 encoding declarations are also explicitly unsupported. Source reading currently supports UTF-8 only.
 
 Unterminated strings, invalid line-joining backslashes and NUL characters return `invalid` with a diagnostic position and no partial results. This lexer does not validate indentation, expression grammar, escape values or bytes-literal contents. It never invokes Python, resolves imports or executes source.
+
+## Ruby extraction
+
+`createRubyCommentExtractor(options)` selects a backend once per scan and exposes `extract(source)` plus backend name/version and either an executable path or fallback reason. Internal options mirror Python: `mode: "auto"`, `"official"`, or `"builtin"`, and an optional absolute `executable` path. These controls are not CLI flags or configuration keys yet.
+
+Automatic selection checks existing `ruby` executables (`ruby.exe` on Windows) in absolute PATH directories, skipping relative directories and Windows Store aliases. The initial version gate accepts Ruby 3.1-3.4 only after a capability probe checks line comments, block comments, Unicode positions and interpolation comments. Other versions, missing tools or failed probes use the limited fallback in auto mode; official mode fails explicitly. No Ruby installation is performed.
+
+The fixed helper uses Ruby's official [Ripper lexer](https://docs.ruby-lang.org/en/3.4/Ripper.html), with `raise_errors: true`. It sends comment byte spans back to Node, which validates boundaries and maps them to the original UTF-16 offsets. A leading UTF-8 BOM is removed only from the helper input; returned positions still refer to the original source. CRLF is preserved. Ripper handles Ruby literal forms such as regexes, percent literals, heredocs and interpolated expressions; their contents must not be mistaken for comments.
+
+Source travels as JSON through stdin, never as executable Ruby. The subprocess runs without a shell from the interpreter's directory, disables RubyGems and did_you_mean startup, and removes Ruby, gem and Bundler environment overrides. It does not execute `BEGIN` blocks, requires or other statements in scanned source. Inputs are limited to 8 MiB, subprocess time to 10 seconds, and output to 32 MiB. Extraction failures after selection never silently switch to the fallback. Syntax errors return no partial comments; their diagnostic currently points to the file start, with Ripper's error message retained.
+
+Both backends reject non-UTF-8 encoding declarations, bare CR line endings and source-terminating control characters. Source discovery already requires UTF-8. These restrictions return an explicit `unsupported` diagnostic rather than silently losing source text.
+
+### Built-in Ruby fallback
+
+`extractRubyComments(source)` recognises hash comments, unindented `=begin` / `=end` blocks, ordinary single/double-quoted strings and the exact column-one `__END__` data marker. Block delimiters occupy their own lines and may have trailing labels; comment bodies exclude those delimiter lines. LF and CRLF are supported. See Ruby's [comment syntax](https://docs.ruby-lang.org/en/3.4/syntax/comments_rdoc.html).
+
+The fallback deliberately rejects interpolation in double-quoted strings, control/meta escapes, regex/percent literals, heredocs, character literals, backticks and special global-variable syntax. Conservative token checks also reject division, modulo, shifts and method names containing `?`. Unsupported or malformed input returns a diagnostic and no partial comments; this is not a complete Ruby grammar validator.
+
+Fallback, mocked adapter and committed-source tests run without Ruby. Integration tests additionally exercise a real Ripper installation when available, including checks that scanned statements and Ruby startup hooks are not executed. Those real-Ruby checks are skipped in the current development environment because Ruby is not on PATH; compatibility across the accepted Ruby versions remains to be verified on machines providing them.
 
 Next chunks will expand fallback syntax support and other language extractors/official adapters, then connect marker matching, blame attribution and report generation. Report integration must expose incomplete coverage and record backend metadata.

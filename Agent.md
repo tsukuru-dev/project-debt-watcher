@@ -196,6 +196,7 @@ It should not be that we are scanning the whole repo etc for the text in markers
 - Select an extractor once per scan. If an already selected official tool reports malformed source, crashes, times out or returns invalid output, report that failure instead of silently retrying with the fallback.
 - Record the extractor name/version and any fallback reason for future report metadata. Provide explicit official/built-in selection and interpreter selection for reproducible CI; introduce user-facing settings when this is connected to report generation.
 - Implement integrations incrementally, starting with Python's standard-library `tokenize`. The initial Python adapter accepts versions 3.12 through 3.14 after a capability probe, retaining the existing limited Python lexer as fallback. Other language integrations remain separate build steps.
+- Ruby follows the same official-tool-first selection using standard-library `Ripper`, with a limited built-in fallback. Initially gate Ruby 3.1-3.4 behind a capability probe; verify real-tool behaviour where Ruby is available and explicitly report skipped integration checks where it is absent. Do not treat unsupported fallback syntax as a debt-free file.
 
 ## The build
 
