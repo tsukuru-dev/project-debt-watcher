@@ -73,7 +73,7 @@ Copying validates the source first, shows both paths, and replaces all supported
 
 Replacing different existing settings requires confirmation in an interactive terminal; an empty answer, cancellation, or anything other than `y`/`yes` declines. CI and non-interactive use fail when confirmation is required. Matching settings report no changes without prompting or rewriting the file. A missing destination may be created by the explicit copy action, including a repository config; this does not perform team setup.
 
-Missing or invalid sources are errors and are never manufactured from defaults. Invalid destinations are preserved for manual correction. Changes detected in the destination while awaiting confirmation cause the save to fail. Copies do not install dependencies, modify package files, stage changes, or commit them. Existing repository settings never continuously inherit personal settings.
+Missing or invalid sources are errors and are never manufactured from defaults. Invalid destinations are preserved for manual correction. Changes to the source, destination, or repository checkout while awaiting confirmation cause the copy to fail without overwriting the destination. This includes switching to another branch with identical config contents. Copies do not install dependencies, modify package files, stage changes, or commit them. Existing repository settings never continuously inherit personal settings.
 
 ## Opening in an editor
 
@@ -108,6 +108,10 @@ Personal defaults use the same format and filename:
 
 Personal configuration actions need no repository or Git executable except when copying from a repository. An explicit `--global config --set`, `--add`, or `--remove` creates missing personal defaults from the supplied template after validating the complete requested change. Interactive `--global config` also initialises them before opening. Listing remains read-only and does not initialise missing defaults. Invalid existing personal files are preserved and reported.
 
-Explicit team setup through `init` is implemented. General first-run setup, choosing personal defaults during setup, and detecting global installations for automatic personal initialisation remain future stages. Runtime snapshots and declined-setup state will be stored separately from configuration.
+Explicit `init` and interactive first-use reports share the team setup flow. A missing repository config can start from personal settings or the supplied template. If personal defaults change during selection, setup stops before changing project files and asks you to retry. Existing repository settings always take precedence and are preserved during integration repair. Copying initial settings excludes metadata and never establishes ongoing inheritance.
+
+Global installations initialise missing personal defaults on normal interactive use, even when installation hooks are disabled. Help, version, listing, dry runs and non-interactive reports create no personal defaults. Existing personal files are preserved. If global-installation detection is unavailable, explicit personal editing/opening commands still work.
+
+Declined automatic setup offers are stored separately under `setup-state/` in the user configuration directory, keyed by canonical worktree path. These files do not belong in the repository or shared config. Explicit `init` bypasses a saved decline and clears it after successful setup. Different worktrees have separate decisions; moving a repository to a new location may cause the setup offer to appear again. Report snapshots remain a future implementation and will use a separate cache.
 
 CLI overrides will apply only to the current report. Permanent edits and copies must validate settings before writing. Configured relative report directories resolve against the repository root; relative `--output` paths resolve against the invocation's working directory. Loading config does not require the report directory to exist; destination checks and creation prompts belong to saving reports.

@@ -177,7 +177,7 @@ export async function inspectSetup(repo: string | undefined, context: GitContext
       add("package-manager-lock", "review", path + " exists or cannot be read. Resolve the package-manager workflow before npm setup.");
     }
   }
-  for (const path of ["node_modules", "node_modules/debt-watcher"]) {
+  for (const path of ["node_modules", "node_modules/debt-watcher", "node_modules/.bin"]) {
     try {
       const stats = await lstat(join(repositoryRoot, path));
       if (!stats.isDirectory() || stats.isSymbolicLink()) {
@@ -191,7 +191,7 @@ export async function inspectSetup(repo: string | undefined, context: GitContext
   }
 
   if (ignore.state === "error") add("gitignore-file", "conflict", ".gitignore: " + ignore.message);
-  const shared = [CONFIG_FILENAME, "package.json", "package-lock.json"];
+  const shared = [CONFIG_FILENAME, "package.json", "package-lock.json", ".gitignore"];
   const [rules, trackedOutput] = await Promise.all([
     ignoreRules(["node_modules/", ...shared], gitContext),
     runGit(["ls-files", "-z", "--", "node_modules", ...shared], gitContext),

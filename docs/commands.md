@@ -2,7 +2,7 @@
 
 Command routing, help, configuration loading/validation, listing, editing, copying, and editor opening are implemented. The full command and validation requirements live in `../Agent.md`.
 
-- `debt-watcher graveyard`: routes report, summary, filter, ordering, and save options to the report handler.
+- `debt-watcher graveyard`: checks repository configuration, offers confirmed team setup/repair during interactive use, then passes report options and saved configuration to the report handler. The scanner is still pending.
 - `debt-watcher config --list`: displays the active configuration and its file path; `--list markers` displays the configured markers. Existing personal defaults can be listed with `--global config --list`.
 - `debt-watcher config --set key=value`: saves one or more settings after validating the complete result.
 - `debt-watcher config --add markers="TO DO,FIXME"` / `--remove markers="HACK"`: updates the marker list without replacing the other entries.
@@ -13,7 +13,7 @@ Command routing, help, configuration loading/validation, listing, editing, copyi
 - `debt-watcher init`: inspects the repository, explains changes, and applies team setup after confirmation; `--repo` selects another local checkout.
 - `debt-watcher init --dry-run`: keeps the inspection read-only, without prompts or npm calls.
 
-Report generation, automatic first-use setup, choosing personal defaults during setup, and setup's editor-opening step remain pending. Plain `init` returns exit code 0 only after verified setup or a verified no-op. It requires interactive confirmation whenever changes are needed, and returns 1 for cancellation, unresolved conflicts, or failure. `init --dry-run` returns 0 for inspection with only present/missing items and 1 for review/conflict items; preview success does not mean setup is complete. See `installation.md` for development-build limitations and failure recovery.
+Report generation and saving remain pending. Setup can copy personal settings or use the template for a missing config, and opens the resulting config after success. Plain `init` returns exit code 0 after verified setup or a verified no-op; an editor launch failure is reported with a manual path without undoing successful setup. It requires interactive confirmation whenever changes are needed, and returns 1 for cancellation, unresolved conflicts, or failure. `init --dry-run` returns 0 for inspection with only present/missing items and 1 for review/conflict items; preview success does not mean setup is complete. See `installation.md` for first-use behaviour, development-build limitations and failure recovery.
 
 Repository setting edits require existing valid settings. Listing remains read-only. Copies require confirmation before replacing different existing settings; CI and non-interactive invocations fail when confirmation is needed. Opening requires an interactive terminal. See `configuration.md` for examples, validation rules, and first-use personal configuration behaviour.
 

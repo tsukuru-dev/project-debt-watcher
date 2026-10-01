@@ -9,7 +9,7 @@ export interface NpmResult { code: number; stdout: string; stderr: string }
 export type NpmRunner = (args: readonly string[], context: GitContext) => Promise<NpmResult>;
 
 /** Find npm's JS entry point so Windows does not need a cmd.exe command string. */
-async function npmCommand(env: NodeJS.ProcessEnv): Promise<string[]> {
+export async function npmCommand(env: NodeJS.ProcessEnv): Promise<string[]> {
   const candidates: string[] = [];
   if (env.npm_execpath && isAbsolute(env.npm_execpath) && basename(env.npm_execpath) === "npm-cli.js") candidates.push(env.npm_execpath);
   candidates.push(join(dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js"));

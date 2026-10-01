@@ -60,7 +60,7 @@ export async function loadConfiguration(location: ConfigurationLocation): Promis
   return (await readConfiguration(location)).document;
 }
 
-/** Used only when an explicit personal edit creates its missing target file. */
+/** Bundled starting settings for personal initialisation and confirmed team setup. */
 export async function loadDefaultConfiguration(): Promise<ConfigurationDocument> {
   const path = new URL("../../templates/debt-watcher.config.json", import.meta.url);
   return parseConfiguration(await readFile(path, "utf8"), path.href);

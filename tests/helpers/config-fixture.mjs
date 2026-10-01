@@ -58,7 +58,9 @@ export function fixture(t) {
     let stdout = "";
     let stderr = "";
     const status = await runCli(args, {
-      version: "0.0.0", cwd, env: environment, terminal, setup,
+      version: "0.0.0", cwd, env: environment, homeDirectory: home,
+      // Setup tests simulate editors; config tests can still exercise their fake executable.
+      terminal: { ...(args.includes("init") ? { openEditor: async () => {} } : {}), ...terminal }, setup,
       stdout: (text) => { stdout += text; }, stderr: (text) => { stderr += text; },
     });
     return { status, stdout, stderr };

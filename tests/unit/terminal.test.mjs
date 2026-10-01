@@ -52,6 +52,21 @@ test("editor launch errors reject and Windows batch wrappers are not sent to a s
   await assert.rejects(openEditor("C:\\unused\\config.json", { platform: "win32", env: { EDITOR: "editor.cmd" } }), /executable.*wrapper/);
 });
 
+test("starting-defaults prompt selects personal or template and cancels on blank, cancel or EOF", () => {
+  const url = new URL("../../dist/terminal/prompts.js", import.meta.url).href;
+  const script = "import {chooseDefaults} from " + JSON.stringify(url)
+    + "; console.log('\\nRESULT=' + await chooseDefaults('/personal/config.json'));";
+  for (const [input, expected] of [["1\n", "personal"], ["2\n", "template"], ["3\n", "undefined"],
+    ["\n", "undefined"], ["", "undefined"], ["invalid\n", "undefined"]]) {
+    const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], {
+      input, encoding: "utf8", timeout: 5000, windowsHide: true,
+    });
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(result.stdout.includes("RESULT=" + expected), result.stdout);
+  }
+});
+
 function launcher(outcomes) {
   const calls = [];
   return {

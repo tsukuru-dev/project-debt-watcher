@@ -1,8 +1,9 @@
 import type { InitArguments } from "./arguments.js";
 import { inspectSetup } from "../setup/inspect.js";
-import { applyTeamSetup, printInspection, type TeamSetupContext } from "../setup/team.js";
+import { printInspection } from "../setup/team.js";
+import { completeTeamSetup, type SetupFlowContext } from "../setup/flow.js";
 
-export type InitContext = TeamSetupContext;
+export type InitContext = SetupFlowContext;
 
 export async function runInit(options: InitArguments, context: InitContext = {
   cwd: process.cwd(), version: "0.0.0", writeOutput: (text) => { process.stdout.write(text); },
@@ -18,5 +19,5 @@ export async function runInit(options: InitArguments, context: InitContext = {
     }
     return;
   }
-  await applyTeamSetup(inspection, context);
+  await completeTeamSetup(inspection, context);
 }

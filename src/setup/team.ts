@@ -4,7 +4,8 @@ import { isDeepStrictEqual } from "node:util";
 import { CONFIG_FILENAME, type ConfigurationDocument } from "../config/types.js";
 import { loadDefaultConfiguration, saveConfiguration } from "../config/store.js";
 import { validateConfiguration } from "../config/validate.js";
-import { runGit, type GitContext } from "../git/client.js";
+import type { GitContext } from "../git/client.js";
+import { readCheckout } from "../git/checkout.js";
 import { confirm, isInteractive } from "../terminal/prompts.js";
 import { inspectSetup, isRecord, parsePackageObject, type SetupInspection } from "./inspect.js";
 import { assertUnchanged, assertWritable, formatPackage, readSetupFile, writeSetupFile } from "./files.js";
@@ -15,28 +16,25 @@ export interface TeamSetupContext extends GitContext {
   writeOutput: (text: string) => void;
   interactive?: boolean;
   confirm?: (question: string) => Promise<boolean>;
-  /** Integration seams: local archive tests and the future first-use setup flow. */
+  /** Integration seams for local archive tests and the shared first-use setup flow. */
   npm?: NpmRunner;
   packageSpec?: string;
   startingConfiguration?: ConfigurationDocument;
+  selectStartingConfiguration?: () => Promise<ConfigurationDocument>;
 }
+
+export class SetupCancelledError extends Error {}
+
+/** Installation verification failed before confirmation or any setup writes. */
+export class SetupVerificationError extends Error {}
 
 export function printInspection(inspection: SetupInspection, write: (text: string) => void): void {
   write("Setup inspection: " + inspection.repositoryRoot + "\n"
     + inspection.items.map((item) => "[" + item.status.toUpperCase() + "] " + item.message).join("\n") + "\n");
 }
 
-async function checkout(context: GitContext): Promise<string> {
-  const read = async (args: string[]) => {
-    try { return await runGit(args, context); }
-    catch (error) { if ((error as { code?: number }).code === 1) return ""; throw error; }
-  };
-  return await read(["symbolic-ref", "--quiet", "HEAD"])
-    + await read(["rev-parse", "--verify", "--quiet", "HEAD"]);
-}
-
 /** npm validates installed versions; we also require a matching lock entry and usable CLI files. */
-async function reusableInstallation(root: string, pkg: Record<string, unknown>, npm: NpmRunner, context: GitContext): Promise<boolean> {
+export async function reusableInstallation(root: string, pkg: Record<string, unknown>, npm: NpmRunner, context: GitContext): Promise<boolean> {
   const localText = await readSetupFile(join(root, "node_modules", "debt-watcher", "package.json"));
   const lockText = await readSetupFile(join(root, "package-lock.json"));
   if (!localText || !lockText) return false;
@@ -93,7 +91,7 @@ export async function applyTeamSetup(inspection: SetupInspection, context: TeamS
     "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "bun.lockb"];
   const snapshots = new Map<string, string | null>();
   for (const name of names) snapshots.set(name, await readSetupFile(join(root, name)));
-  const originalCheckout = await checkout(localContext);
+  const originalCheckout = await readCheckout(localContext);
   // Reinspect after snapshotting so stale caller plans cannot authorize new changes.
   const fresh = await inspectSetup(root, localContext);
   if (!isDeepStrictEqual(fresh, inspection)) throw new Error("Setup state changed. Run init again to review the new plan.");
@@ -106,9 +104,14 @@ export async function applyTeamSetup(inspection: SetupInspection, context: TeamS
     && item.id !== "script" && !(item.id === "dependency" && preserveProduction));
   if (blockers.length) throw new Error("Resolve these setup items before applying changes: " + blockers.map((item) => item.id).join(", ") + ". No files changed.");
   const originalSpec = declarations.length ? (pkg[declarations[0]!] as Record<string, string>)["debt-watcher"] : undefined;
-  const startingConfig = snapshots.get(CONFIG_FILENAME) === null
+  let startingConfig = snapshots.get(CONFIG_FILENAME) === null
     ? validateConfiguration(context.startingConfiguration ?? await loadDefaultConfiguration()) : undefined;
-  const installNeeded = !declarations.length || !await reusableInstallation(root, pkg, npm, localContext);
+  let installNeeded: boolean;
+  try {
+    installNeeded = !declarations.length || !await reusableInstallation(root, pkg, npm, localContext);
+  } catch (error) {
+    throw new SetupVerificationError(error instanceof Error ? error.message : "Installation verification failed.", { cause: error });
+  }
   const scriptConflict = fresh.items.some((item) => item.id === "script" && item.status === "conflict");
   const needsFiles = fresh.items.some((item) => item.status === "missing") || scriptConflict;
   if (!installNeeded && !needsFiles) {
@@ -117,7 +120,9 @@ export async function applyTeamSetup(inspection: SetupInspection, context: TeamS
   }
   context.writeOutput("Plan: preserve existing config and unrelated package fields; create missing config, "
     + "add the debt-watcher script, and share the node_modules/ ignore rule as needed.\n");
-  if (startingConfig) context.writeOutput("New configuration starts with fresh=" + startingConfig.fresh + " days.\n");
+  if (startingConfig) context.writeOutput(context.selectStartingConfiguration
+    ? "For missing config, choose personal defaults when available or the supplied template (fresh=30 days).\n"
+    : "New configuration starts with fresh=" + startingConfig.fresh + " days.\n");
   if (preserveProduction) context.writeOutput("Keep Debt Watcher in dependencies; do not move it to devDependencies.\n");
   context.writeOutput(installNeeded
     ? "npm will install/repair project dependencies and update package.json/package-lock.json. Lifecycle scripts are disabled.\n"
@@ -129,12 +134,16 @@ export async function applyTeamSetup(inspection: SetupInspection, context: TeamS
     throw new Error("This development version has not been released. Install a locally packed Debt Watcher archive in this repository first, then rerun init. No files changed.");
   }
   const ask = context.confirm ?? confirm;
-  if (!await ask("Apply this team setup in \"" + root + "\"?")) throw new Error("Setup cancelled. No files changed.");
+  if (!await ask("Apply this team setup in \"" + root + "\"?")) throw new SetupCancelledError("Setup cancelled. No files changed.");
   if (scriptConflict && !await ask('Replace the existing debt-watcher script with "debt-watcher"?')) {
-    throw new Error("Script replacement declined. No files changed.");
+    throw new SetupCancelledError("Script replacement declined. No files changed.");
+  }
+  if (startingConfig && context.selectStartingConfiguration) {
+    startingConfig = validateConfiguration(await context.selectStartingConfiguration());
+    context.writeOutput("Selected starting configuration: fresh=" + startingConfig.fresh + " days.\n");
   }
   const assertPlan = async () => {
-    if (await checkout(localContext) !== originalCheckout) throw new Error("The active checkout changed during setup. Run init again.");
+    if (await readCheckout(localContext) !== originalCheckout) throw new Error("The active checkout changed during setup. Run init again.");
     for (const [name, source] of snapshots) await assertUnchanged(join(root, name), source);
     const current = await inspectSetup(root, localContext);
     if (!isDeepStrictEqual(current, fresh)) throw new Error("Setup state changed during confirmation. Run init again.");
@@ -178,7 +187,7 @@ export async function applyTeamSetup(inspection: SetupInspection, context: TeamS
       throw new Error("The existing Debt Watcher dependency declaration changed during installation. Review before retrying.");
     }
     if (!await reusableInstallation(root, current, npm, localContext)) throw new Error("npm installation or lockfile verification failed.");
-    if (await checkout(localContext) !== originalCheckout) throw new Error("The active checkout changed during npm installation.");
+    if (await readCheckout(localContext) !== originalCheckout) throw new Error("The active checkout changed during npm installation.");
     await assertUnchanged(join(root, CONFIG_FILENAME), snapshots.get(CONFIG_FILENAME)!);
     if (startingConfig) await saveConfiguration({ scope: "repository", repositoryRoot: root, path: join(root, CONFIG_FILENAME) },
       startingConfig, null, { allowCreateRepository: true });
@@ -196,5 +205,3 @@ export async function applyTeamSetup(inspection: SetupInspection, context: TeamS
       : ""));
   }
 }
-
-// TODO: Connect personal-default selection, editor opening, and first-use report continuation in chunk 3.

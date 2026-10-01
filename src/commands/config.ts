@@ -14,6 +14,7 @@ export interface ConfigurationInteraction {
   interactive?: boolean;
   confirm?: (question: string) => Promise<boolean>;
   openEditor?: (path: string) => Promise<void>;
+  chooseDefaults?: (personalPath: string) => Promise<"personal" | "template" | undefined>;
 }
 
 export interface ConfigCommandContext extends ConfigurationPathContext, ConfigurationInteraction {

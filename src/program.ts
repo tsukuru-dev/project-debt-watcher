@@ -15,6 +15,9 @@ import { runConfig, type ConfigurationInteraction } from "./commands/config.js";
 import { runGraveyard } from "./commands/graveyard.js";
 import { runInit } from "./commands/init.js";
 import type { TeamSetupContext } from "./setup/team.js";
+import { prepareReportRepository, type PreparedRepository } from "./setup/flow.js";
+import { initialisePersonalDefaults } from "./setup/defaults.js";
+import { isInteractive } from "./terminal/prompts.js";
 
 export interface CommandHandlers {
   graveyard(options: GraveyardArguments): void | Promise<void>;
@@ -26,31 +29,48 @@ export interface CliOptions {
   version: string;
   cwd?: string;
   env?: NodeJS.ProcessEnv;
+  homeDirectory?: string;
   stdout?: (text: string) => void;
   stderr?: (text: string) => void;
   handlers?: Partial<CommandHandlers>;
   terminal?: ConfigurationInteraction;
   setup?: Pick<TeamSetupContext, "npm" | "packageSpec" | "startingConfiguration">;
+  isGlobalInstallation?: () => Promise<boolean>;
+  /** Report implementation boundary; setup finishes before dispatching original arguments. */
+  report?: (options: GraveyardArguments, repository?: PreparedRepository) => Promise<void>;
 }
 
 function createProgram(options: CliOptions): Command {
   const writeOutput = options.stdout ?? ((text: string) => { process.stdout.write(text); });
+  const context = {
+    cwd: options.cwd ?? process.cwd(), env: options.env ?? process.env,
+    version: options.version, writeOutput, ...options.terminal, ...options.setup,
+    ...(options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }),
+  };
+  const initialise = async () => {
+    if (isInteractive(context.env, context.interactive) && await options.isGlobalInstallation?.()) {
+      try { await initialisePersonalDefaults(context); }
+      catch (error) {
+        writeOutput("Could not initialise personal defaults: " + (error instanceof Error ? error.message : "Unknown error.") + "\n");
+      }
+    }
+  };
   const handlers: CommandHandlers = {
-    graveyard: runGraveyard,
-    config: (values) => runConfig(values, {
-      cwd: options.cwd ?? process.cwd(),
-      env: options.env ?? process.env,
-      writeOutput,
-      ...options.terminal,
-    }),
-    init: (values) => runInit(values, {
-      cwd: options.cwd ?? process.cwd(),
-      env: options.env ?? process.env,
-      version: options.version,
-      writeOutput,
-      ...options.terminal,
-      ...options.setup,
-    }),
+    graveyard: async (values) => {
+      // Exporting a cached report must not initialise or repair a changed checkout.
+      if (values.save === "latest") return (options.report ?? runGraveyard)(values);
+      await initialise();
+      const repository = await prepareReportRepository(values, context);
+      await (options.report ?? runGraveyard)(values, repository);
+    },
+    config: async (values) => {
+      await runConfig(values, context);
+      if (values.list === undefined && values.copyFrom === undefined && !values.global) await initialise();
+    },
+    init: async (values) => {
+      if (!values.dryRun) await initialise();
+      await runInit(values, context);
+    },
     ...options.handlers,
   };
   const program = new Command()
@@ -66,7 +86,7 @@ function createProgram(options: CliOptions): Command {
     })
     .showHelpAfterError("Run 'debt-watcher --help' for usage.")
     .exitOverride()
-    .addHelpText("after", "\nConfiguration and confirmed team setup are available. Reports and automatic first-use setup are not implemented yet.");
+    .addHelpText("after", "\nConfiguration, team setup and first-use setup are available. Report generation and saving are not implemented yet.");
 
   program.command("graveyard")
     .description("Generate or save a detailed report or summary (implementation pending)")
