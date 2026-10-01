@@ -25,7 +25,7 @@ test("compiled CLI works outside a Git repository and creates no user or project
       [["graveyard", "--save", "--summary", "blame"], 1, /Report generation and saving are not implemented yet/],
       [["config", "--list"], 1, /Cannot resolve a Git working tree/],
       [["--global", "config"], 1, /Cannot open an editor in non-interactive use/],
-      [["init"], 1, /Team setup is not implemented yet/],
+      [["init"], 1, /Cannot resolve a Git working tree/],
       [["not-a-command"], 1, /unknown command/],
     ];
     for (const [args, status, expected] of cases) {

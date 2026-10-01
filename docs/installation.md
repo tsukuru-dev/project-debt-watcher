@@ -1,6 +1,6 @@
 # Installation
 
-The TypeScript build, command routing, help, version output, and configuration loading/validation, listing, editing, copying, and editor opening are implemented. Reports and team setup remain future build stages.
+The TypeScript build, command routing, help, version output, configuration commands, and read-only team setup inspection are implemented. Reports and applying team setup remain future build stages.
 
 The package uses one executable named `debt-watcher`. This build targets Node.js 22 or newer. npm is needed for installation. Git locates repository configuration and will also be used for scanning; personal configuration actions need no Git repository except when copying from one. See `../Agent.md` for the complete requirements.
 
@@ -25,6 +25,26 @@ The development `debt-watcher` script runs `node dist/cli.js` so changes can be 
 Commander is the runtime command-line parser. TypeScript and Node.js type definitions are development dependencies. npm maintains `package-lock.json`; do not hand-edit it. There are no installation hooks that create configuration or change another project's files.
 
 For consuming projects, confirmed team setup will create or reuse the shared config, add the local development dependency and `debt-watcher` npm script, and let npm update the package files. Commit the shared config, `package.json`, and `package-lock.json`; ignore `node_modules/`.
+
+## Preview team setup
+
+From this development checkout, inspect a separate consumer repository:
+
+```sh
+npm run debt-watcher -- init --repo "../consumer-project"
+```
+
+The inspection locates the selected worktree root and reports:
+
+- Shared config validity and whether it needs creating.
+- Missing or invalid `package.json`, dependency declarations, and matching or conflicting npm scripts.
+- Repository-local Debt Watcher package metadata and the lockfile entry.
+- Effective Git ignore rules for `node_modules/` and the shared config/package files, including negations and machine-level exclusions.
+- Tracked `node_modules` files and workflows needing review, such as workspaces, another package manager, or `npm-shrinkwrap.json`.
+
+`PRESENT` means an inspected entry exists and passes the checks above. `MISSING` describes a proposed addition; `CONFLICT` and `REVIEW` identify decisions or corrections needed before applying setup. Dependency compatibility, executable integrity, and full lockfile consistency are deliberately left to npm verification in the apply step. Inspection never executes npm or project scripts, contacts the registry, creates personal defaults, or changes files.
+
+The command is safe to repeat in interactive terminals or CI. Exit code 0 means inspection succeeded with no conflicts/review items, even if setup is missing; it does not certify that the repository is fully configured. Exit code 1 signals inspection errors or review items. Applying the plan, confirmation prompts, and first-use setup offers are still pending. Inspecting Debt Watcher's own source package reports a self-dependency conflict; use a separate consumer repository to try the future installation flow.
 
 `npm pack` builds through `prepack` and produces an archive containing compiled JavaScript, the configuration template, package metadata, and npm's automatically included documentation. It does not publish the package. The template is valid and currently sets freshness to 30 days; see `configuration.md` for manual setup while automatic setup is pending.
 

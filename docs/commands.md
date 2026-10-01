@@ -10,9 +10,9 @@ Command routing, help, configuration loading/validation, listing, editing, copyi
 - `debt-watcher config`: opens the selected repository config in an editor. `--global config` opens personal defaults and creates them from the template if missing.
 - `debt-watcher --global config --copy-from repo`: copies repository settings into personal defaults.
 - `debt-watcher config --copy-from global`: copies personal settings into the selected repository config, creating it if missing.
-- `debt-watcher init`: routes to the team setup handler.
+- `debt-watcher init`: performs a read-only setup inspection and previews missing pieces and conflicts; `--repo` selects another local checkout.
 
-Report generation and team setup still report that they are not implemented and return exit code 1. Repository setting edits require existing valid settings. Listing remains read-only. Copies require confirmation before replacing different existing settings; CI and non-interactive invocations fail when confirmation is needed. Opening requires an interactive terminal. See `configuration.md` for examples, validation rules, and first-use personal configuration behaviour.
+Report generation and applying team setup remain pending. `init` currently prints an inspection only: no prompts, file changes, installations, editor launches, or Git writes. It returns exit code 0 for a successful inspection with only present/missing items, and 1 for conflicts, review items, or inspection errors. Exit code 0 does not mean setup has been applied. Repository setting edits require existing valid settings. Listing remains read-only. Copies require confirmation before replacing different existing settings; CI and non-interactive invocations fail when confirmation is needed. Opening requires an interactive terminal. See `configuration.md` for examples, validation rules, and first-use personal configuration behaviour.
 
 Use `--help` on the executable or on any command. With no arguments, the executable displays help. `--version` reads the installed package version. Help and version return exit code 0 without requiring a Git repository or configuration.
 
@@ -27,6 +27,7 @@ npm run debt-watcher -- --version
 npm run debt-watcher -- graveyard --help
 npm run debt-watcher -- config --help
 npm run debt-watcher -- init --help
+npm run debt-watcher -- init --repo "../consumer-project"
 # With a configuration file already present at the target repository root:
 npm run debt-watcher -- config --list
 npm run debt-watcher -- config --list markers

@@ -8,7 +8,7 @@ export interface GitContext {
   env?: NodeJS.ProcessEnv;
 }
 
-export async function runGit(args: readonly string[], context: GitContext): Promise<string> {
+export async function runGit(args: readonly string[], context: GitContext, input?: string): Promise<string> {
   const env = { ...(context.env ?? process.env) };
   // The requested checkout, not inherited Git process state, selects the repository.
   const repositoryOverrides = new Set([
@@ -18,12 +18,14 @@ export async function runGit(args: readonly string[], context: GitContext): Prom
   for (const key of Object.keys(env)) {
     if (repositoryOverrides.has(key.toUpperCase())) delete env[key];
   }
-  const result = await execute("git", [...args], {
+  const execution = execute("git", [...args], {
     cwd: context.cwd,
     env,
     encoding: "utf8",
     windowsHide: true,
     maxBuffer: 1024 * 1024,
   });
+  execution.child.stdin?.end(input);
+  const result = await execution;
   return result.stdout;
 }

@@ -41,7 +41,11 @@ function createProgram(options: CliOptions): Command {
       writeOutput,
       ...options.terminal,
     }),
-    init: runInit,
+    init: (values) => runInit(values, {
+      cwd: options.cwd ?? process.cwd(),
+      env: options.env ?? process.env,
+      writeOutput,
+    }),
     ...options.handlers,
   };
   const program = new Command()
@@ -57,7 +61,7 @@ function createProgram(options: CliOptions): Command {
     })
     .showHelpAfterError("Run 'debt-watcher --help' for usage.")
     .exitOverride()
-    .addHelpText("after", "\nConfiguration commands are available. Reports and team setup are not implemented yet.");
+    .addHelpText("after", "\nConfiguration commands and read-only setup inspection are available. Reports and applying team setup are not implemented yet.");
 
   program.command("graveyard")
     .description("Generate or save a detailed report or summary (implementation pending)")
@@ -125,7 +129,7 @@ function createProgram(options: CliOptions): Command {
     });
 
   program.command("init")
-    .description("Create or repair team setup (implementation pending)")
+    .description("Inspect team setup and preview needed changes (read-only; applying setup is pending)")
     .action(async (_localOptions, command: Command) => {
       const values = command.optsWithGlobals<SharedArguments>();
       validateScope("init", values);
