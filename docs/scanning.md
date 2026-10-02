@@ -1,12 +1,12 @@
 # Comment scanner: current implementation
 
-Branch selection, committed source reads, JavaScript/TypeScript, Python, Ruby, Go, Rust and initial PHP comment lexers, CSS, plain HTML and initial Django template comment extraction, and official Python/Ruby/Go/PHP tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
+Branch selection, committed source reads, JavaScript/TypeScript, C/C++, Python, Ruby, Go, Rust and initial PHP comment lexers, CSS, plain HTML and initial Django template comment extraction, and official Python/Ruby/Go/PHP tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
 
 `selectBranches` snapshots every named local branch by default. Remote scope snapshots existing remote-tracking branches from all remotes, excluding symbolic aliases such as `origin/HEAD`. Tags are excluded. An empty repository returns no branches. Detached HEAD does not add an unnamed branch to the set. Different branches pointing to the same commit remain separate snapshots.
 
 Each snapshot records the full ref, display name, scope and commit ID. Later reads use that immutable commit rather than resolving the branch again. Moving or deleting a branch during a scan therefore does not change the saved source snapshot. Files come from commits, not the staging area or working directory. Untracked files and uncommitted edits are not included in this layer.
 
-`listSourceFiles` enumerates regular tracked blobs throughout the commit tree, including executable source files. Symlinks and submodules are excluded. No implicit folder exclusions are applied: tracked source in a vendor/generated directory remains a candidate. Candidate extensions cover Python, Ruby, JavaScript/Node, JSX, TypeScript, TSX, CSS, C++ and headers, Rust, Go, and HTML/Django templates. Classification selects a language-specific extractor; several language extractors are still pending.
+`listSourceFiles` enumerates regular tracked blobs throughout the commit tree, including executable source files. Symlinks and submodules are excluded. No implicit folder exclusions are applied: tracked source in a vendor/generated directory remains a candidate. Candidate extensions cover Python, Ruby, JavaScript/Node, JSX, TypeScript, TSX, CSS, C/C++ and headers, Rust, Go, PHP, and HTML/Django templates. Classification selects a language-specific extractor; several language extractors are still pending.
 
 Filenames are preserved using Git's NUL-delimited tree output. Blob reads use full object IDs, so spaces, tabs, newlines, colons or shell characters in filenames are never interpreted as shell commands or revision expressions. The same APIs support SHA-1 and SHA-256 object IDs. Reads work from nested directories and linked worktrees without changing the checkout or index.
 
@@ -26,7 +26,7 @@ Markers remain plain text such as `TODO` or `FIXME`. The language extractor dete
 | JSX / TSX / React | JS comments in expressions, including `{/* ... */}`; plain JSX text is not a comment | Pending |
 | Python | `# ...`, including comments inside f/t-string expressions; literal text and docstrings are not comments | Official tokenizer adapter plus built-in lexer; 168 focused Python tests passed |
 | Ruby | `# ...`, column-one `=begin` / `=end` blocks | Ripper adapter plus limited built-in fallback; real-Ruby verification pending in the current environment |
-| C++ and headers | `// ...`, `/* ... */` | Pending |
+| C/C++ and headers | `// ...`, `/* ... */` | Initial built-in lexer implemented; see scope below |
 | Rust | `// ...`, `/* ... */`, including nested blocks and doc comments | Built-in lexer implemented; new tests unrun |
 | Go | `// ...`, non-nesting `/* ... */` | Official `go/scanner` adapter plus built-in lexer; focused tests passed, real-Go check skipped |
 | CSS | `/* ... */` | Implemented for plain CSS; see scope below |
@@ -34,7 +34,7 @@ Markers remain plain text such as `TODO` or `FIXME`. The language extractor dete
 | Django HTML templates | `{# ... #}`, `{% comment %} ... {% endcomment %}`, `<!-- ... -->` | Initial extractor implemented; see scope below |
 | PHP with HTML | PHP `// ...`, `# ...`, `/* ... */`; HTML `<!-- ... -->` outside PHP tags | Official `token_get_all()` adapter plus limited built-in fallback; real-PHP check pending |
 
-Ruby classification includes `.rb`, `.rake`, `.gemspec`, and exact filenames `Gemfile` and `Rakefile`. ERB templates are not covered. PHP classification includes `.php` and `.phtml`. C classification and extraction remain a future chunk; this table does not imply all required languages are implemented.
+Ruby classification includes `.rb`, `.rake`, `.gemspec`, and exact filenames `Gemfile` and `Rakefile`. ERB templates are not covered. PHP classification includes `.php` and `.phtml`. `.c` is classified as C; `.h` remains classified with C++ headers because its language cannot be determined from the extension alone. This table does not imply all required languages are implemented.
 
 Plain `.html` and `.htm` files are classified as HTML; `.djhtml` and `.django` are classified as Django templates. A Django template stored as `.html` currently returns `unsupported` when the plain HTML extractor encounters `{#` or `{%`. The Django extractor exists separately, but choosing it for a `.html` file is not yet wired into orchestration.
 
@@ -76,7 +76,15 @@ Successful extraction returns `status: "ok"` and the comments, including comment
 
 The first lexer chunk deliberately leaves JSX/TSX, decorators, escaped identifiers, legacy HTML-style JS comments, Unicode-set regexes and nested/literal opening brackets in regex classes unsupported. It also stops at uncertain regex-versus-division contexts, such as immediately after a closing brace, `await`/`yield`, ambiguous `>`/postfix `!`, or a TypeScript operand followed by a newline and slash. TypeScript angle-bracket assertions and generic arrows need a later rule. These restrictions can reject valid code; they must not silently trigger a plain-text marker search. Nested templates have a limit of 128 expression levels.
 
+An optional official TypeScript parser remains under investigation. This project's TypeScript build dependency is 7.0.2, and the [TypeScript 7.0 release notes](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/) state that 7.0 does not ship a stable programmatic API. The installed package exposes only `unstable` parser entry points. We therefore do not use those entry points for comment extraction or add TypeScript 6 as a new runtime dependency without discussing that packaging choice. The built-in scanner remains the fallback, and JSX/TSX still return `unsupported`.
+
 No Git calls, file writes, source execution, module imports from scanned code or project configuration loading occur during extraction. Tests separately check the lexer and its use with committed-source reads. It is not yet wired into the report command.
+
+## C/C++ extraction
+
+`extractCComments(source, language)` handles `.c` as C and the existing C++ extensions and headers as C++. It extracts `//` and non-nesting `/* ... */` comments, skipping ordinary quoted and character literals. C++ raw strings, including encoded prefixes and custom delimiters, are skipped so comment-looking text inside them is not reported. Standard direct `#include <...>` and `#include "..."` header names are skipped. Comment-like text inside a header name is reported as `unsupported` because its interpretation can depend on the implementation. Original text and UTF-16 positions are preserved.
+
+This first fallback does not run a preprocessor or compiler. Line splicing and trigraphs, macro-based or otherwise complex `#include` forms, `__has_include`, C++ header imports, and malformed raw strings return diagnostics without partial comments. Files with these forms are not treated as debt-free. An optional Clang integration remains a separate later decision because Clang tooling needs the installed toolchain and often project compile flags. C/C++ extractor tests have been added but not run at the user's request; the extractor is not yet wired into reports.
 
 ## CSS extraction
 

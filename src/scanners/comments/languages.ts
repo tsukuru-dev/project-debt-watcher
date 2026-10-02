@@ -1,7 +1,7 @@
 import { posix } from "node:path";
 
 export type SourceLanguage = "python" | "javascript" | "jsx" | "typescript" | "tsx"
-  | "css" | "cpp" | "rust" | "go" | "ruby" | "html" | "django-template" | "php";
+  | "css" | "c" | "cpp" | "rust" | "go" | "ruby" | "html" | "django-template" | "php";
 
 // Candidate classification only; extractor support is implemented separately per language.
 const extensions: Readonly<Record<string, SourceLanguage>> = {
@@ -9,6 +9,7 @@ const extensions: Readonly<Record<string, SourceLanguage>> = {
   ".js": "javascript", ".mjs": "javascript", ".cjs": "javascript", ".jsx": "jsx",
   ".ts": "typescript", ".mts": "typescript", ".cts": "typescript", ".tsx": "tsx",
   ".css": "css", ".cpp": "cpp", ".cc": "cpp", ".cxx": "cpp", ".c++": "cpp",
+  ".c": "c",
   ".h": "cpp", ".hh": "cpp", ".hpp": "cpp", ".hxx": "cpp",
   ".rs": "rust", ".go": "go",
   ".rb": "ruby", ".rake": "ruby", ".gemspec": "ruby",
