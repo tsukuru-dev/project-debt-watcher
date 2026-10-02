@@ -57,7 +57,7 @@ test("unsupported PHP syntax and mixed HTML contexts return no partial comments"
     '<!-- first --><?php echo `date`; ?>',
     '<!-- first --><?php echo "{$object->name}"; ?>',
     '<!-- before <?php // TODO ?> after -->',
-    '<!-- first --><script>/* TODO */</script>',
+    '<!-- first --><script type="text/babel">/* TODO */</script>',
   ];
   for (const source of cases) {
     const result = extractPhpComments(source);

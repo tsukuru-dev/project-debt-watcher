@@ -99,6 +99,35 @@ test("TypeScript annotations, interfaces, assertions using as and type strings p
   assert.deepEqual(extract(source, "typescript").map((c) => c.text), [" field ", " actual", " return "]);
 });
 
+test("JSX and TSX find expression comments but ignore markup text and quoted attributes", () => {
+  const source = 'const view = <><Card title="// TODO text" data-note="/* fake */" '
+    + 'value={/* prop */ value} disabled>{/* child */} // TODO text '
+    + '<span>{condition ? <b>{/* nested */ name}</b> : null}</span>'
+    + '</Card></>; // end';
+  for (const language of ["jsx", "tsx"]) {
+    assert.deepEqual(extract(source, language).map((c) => c.text), [" prop ", " child ", " nested ", " end"]);
+  }
+});
+
+test("JSX expression containers reuse JavaScript literal and template handling", () => {
+  const source = 'const el = <Box {...props} value={ `/* text */ ${ 1 /* real */ }` } '
+    + 'rendered={<Leaf />}>{"// text"}{/* visible */}</Box>;';
+  assert.deepEqual(extract(source, "jsx").map((c) => c.text), [" real ", " visible "]);
+});
+
+test("unsupported or malformed JSX never returns partial comments", () => {
+  for (const [source, status] of [
+    ["// before\nconst view = <Box /* raw */ />;", "unsupported"],
+    ["// before\nconst view = <Box>unfinished", "invalid"],
+    ["// before\nconst view = <Box></Other>;", "invalid"],
+    ["// before\nconst view = <Box value={x>;", "invalid"],
+  ]) {
+    const result = extractJavaScriptComments(source, "jsx");
+    assert.equal(result.status, status, JSON.stringify(result));
+    assert.deepEqual(result.comments, []);
+  }
+});
+
 test("hashbangs and private fields are not debt comments", () => {
   const source = '\uFEFF#!/usr/bin/env node // TODO interpreter\nclass Example { #value = "// fake"; /* real */ }';
   assert.deepEqual(extract(source).map((c) => c.text), [" real "]);
@@ -155,7 +184,7 @@ for (const [source, language] of [
 }
 
 test("the JavaScript extractor rejects other languages, including those with separate extractors", () => {
-  for (const language of ["python", "jsx", "tsx", "css", "cpp", "rust", "go", "django-template"]) {
+  for (const language of ["python", "css", "cpp", "rust", "go", "django-template"]) {
     const result = extractJavaScriptComments("// TODO", language);
     assert.equal(result.status, "unsupported");
     assert.deepEqual(result.comments, []);

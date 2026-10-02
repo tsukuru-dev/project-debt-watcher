@@ -19,6 +19,8 @@ class ScanFailure extends Error {
 export function extractJavaScriptComments(source: string, language: SourceLanguage): CommentExtraction {
   const { position, comment } = commentSource(source, lineBreak);
   const comments: SourceComment[] = [];
+  const jsx = language === "jsx" || language === "tsx";
+  const typed = language === "typescript" || language === "tsx";
   let index = source.charCodeAt(0) === 0xfeff ? 1 : 0;
   const fail = (status: ScanFailure["status"], message: string, offset = index): never => {
     throw new ScanFailure(status, offset, message);
@@ -74,6 +76,70 @@ export function extractJavaScriptComments(source: string, language: SourceLangua
     }
     fail("invalid", "Unterminated template literal.", start);
   };
+  const jsxName = () => {
+    const match = /^[A-Za-z_$][\w$]*(?:[.:-][A-Za-z_$][\w$]*)*/u.exec(source.slice(index));
+    if (!match) return fail("unsupported", "Unsupported JSX tag or attribute name.");
+    index += match[0].length;
+    return match[0];
+  };
+  const jsxWhitespace = () => {
+    while (index < source.length && /\s/u.test(source[index]!)) index++;
+  };
+  const jsxAttributeString = () => {
+    const start = index;
+    const quote = source[index++]!;
+    while (index < source.length && source[index] !== quote) index++;
+    if (index >= source.length) fail("invalid", "Unterminated JSX attribute string.", start);
+    index++;
+  };
+  const jsxElement = (depth: number) => {
+    const start = index;
+    if (depth > 128) fail("unsupported", "JSX nesting exceeds the lexer limit.", start);
+    index++; // '<'
+    const name = source[index] === ">" ? "" : jsxName();
+    if (name === "") index++; // fragment opening '<>'
+    else {
+      while (index < source.length) {
+        jsxWhitespace();
+        if (source.startsWith("/>", index)) { index += 2; return; }
+        if (source[index] === ">") { index++; break; }
+        if (source[index] === "{") {
+          index++;
+          code(true, depth + 1);
+          continue;
+        }
+        jsxName();
+        jsxWhitespace();
+        if (source[index] !== "=") continue;
+        index++;
+        jsxWhitespace();
+        if (source[index] === '"' || source[index] === "'") jsxAttributeString();
+        else if (source[index] === "{") { index++; code(true, depth + 1); }
+        else if (source[index] === "<") jsxElement(depth + 1);
+        else fail("unsupported", "Unsupported JSX attribute value.");
+      }
+      if (index >= source.length && source[index - 1] !== ">") fail("invalid", "Unterminated JSX opening tag.", start);
+    }
+    while (index < source.length) {
+      if (source.startsWith("</", index)) {
+        index += 2;
+        const closing = name === "" ? "" : jsxName();
+        jsxWhitespace();
+        if (source[index] !== ">" || closing !== name) fail("invalid", "Mismatched JSX closing tag.", index);
+        index++;
+        return;
+      }
+      if (source[index] === "<") {
+        if (!/[A-Za-z_$>]/u.test(source[index + 1] ?? "")) fail("unsupported", "Unsupported JSX child syntax.");
+        jsxElement(depth + 1);
+      } else if (source[index] === "{") {
+        index++;
+        code(true, depth + 1);
+      } else if (source[index] === "}") fail("invalid", "Unescaped closing brace in JSX text.");
+      else index++;
+    }
+    fail("invalid", "Unterminated JSX element.", start);
+  };
   const code = (interpolation: boolean, depth: number) => {
     const stack: Delimiter[] = [];
     let goal: Goal = "expression", previous = "", restricted = false, lineGap = false;
@@ -108,7 +174,7 @@ export function extractJavaScriptComments(source: string, language: SourceLangua
       if (c === '"' || c === "'") { quoted(c); goal = "operator"; previous = "literal"; continue; }
       if (c === "`") { template(depth); goal = "operator"; previous = "literal"; continue; }
       if (c === "/") {
-        if (language === "typescript" && goal === "operator" && precededByLineBreak) {
+        if (typed && goal === "operator" && precededByLineBreak) {
           fail("unsupported", "A slash after a TypeScript line boundary may follow a type declaration; this needs a later lexer rule.");
         }
         if (goal === "uncertain") fail("unsupported", "Cannot safely distinguish a regex from division in this syntax yet.");
@@ -138,6 +204,9 @@ export function extractJavaScriptComments(source: string, language: SourceLangua
         goal = "operator"; previous = "number"; continue;
       }
       if (c === "<" && goal !== "operator") {
+        if (jsx && /[A-Za-z_$>]/u.test(source[index + 1] ?? "")) {
+          jsxElement(depth + 1); goal = "operator"; previous = "literal"; continue;
+        }
         fail("unsupported", "JSX and angle-bracket assertions/generic arrows need a later lexer rule.");
       }
       if (c === "@") fail("unsupported", "Decorators need a later lexer rule.");
@@ -174,7 +243,7 @@ export function extractJavaScriptComments(source: string, language: SourceLangua
     if (interpolation || stack.length) fail("invalid", "Unterminated expression or delimiter.");
   };
   try {
-    if (language !== "javascript" && language !== "typescript") fail("unsupported", "Comment extraction for " + language + " is not implemented yet.", 0);
+    if (language !== "javascript" && language !== "typescript" && !jsx) fail("unsupported", "Comment extraction for " + language + " is not implemented yet.", 0);
     // A hashbang is an interpreter directive, not a debt comment.
     if (source.startsWith("#!", index)) while (index < source.length && !lineBreak(source[index])) index++;
     code(false, 0);

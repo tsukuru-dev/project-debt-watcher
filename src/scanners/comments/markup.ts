@@ -1,4 +1,6 @@
 import { commentSource } from "./source.js";
+import { extractCssComments } from "./css.js";
+import { extractJavaScriptComments } from "./javascript.js";
 import type { CommentExtraction, SourceComment } from "./types.js";
 
 const nameCharacter = (value: string | undefined) => value !== undefined && /[a-zA-Z0-9:-]/u.test(value);
@@ -92,6 +94,69 @@ export function extractMarkupComments(source: string, django: boolean): CommentE
     index = source.length;
   };
 
+  const attributes = (from: number, to: number): Map<string, string | undefined> => {
+    const values = new Map<string, string | undefined>();
+    let at = from;
+    while (at < to) {
+      while (htmlSpace(source[at])) at++;
+      if (at >= to) break;
+      if (source[at] === "/") fail("unsupported", "Self-closing script and style tags need a later scanner rule.", at);
+      const start = at;
+      while (at < to && !htmlSpace(source[at]) && !["=", "/", ">", "'", '"'].includes(source[at]!)) at++;
+      if (at === start) fail("unsupported", "Unsupported script or style attribute syntax.", at);
+      const name = lower.slice(start, at);
+      while (htmlSpace(source[at])) at++;
+      let value: string | undefined;
+      if (source[at] === "=") {
+        at++;
+        while (htmlSpace(source[at])) at++;
+        if (source[at] === '"' || source[at] === "'") {
+          const quote = source[at++]!;
+          const valueStart = at;
+          while (at < to && source[at] !== quote) at++;
+          if (at >= to) fail("invalid", "Unterminated script or style attribute.", valueStart);
+          value = source.slice(valueStart, at++);
+        } else {
+          const valueStart = at;
+          while (at < to && !htmlSpace(source[at]) && source[at] !== ">") at++;
+          if (at === valueStart) fail("invalid", "Empty script or style attribute.", valueStart);
+          value = source.slice(valueStart, at);
+        }
+      }
+      if (name === "type") {
+        if (values.has(name)) fail("unsupported", "Repeated script or style type attributes.", start);
+        values.set(name, value);
+      }
+    }
+    return values;
+  };
+
+  const scanEmbedded = (name: "script" | "style", start: number, mode: "javascript" | "css" | "data"): void => {
+    let close = lower.indexOf(`</${name}`, index);
+    const after = name.length + 2;
+    while (close >= 0 && !htmlSpace(source[close + after]) && source[close + after] !== ">") {
+      close = lower.indexOf(`</${name}`, close + after);
+    }
+    if (close < 0) fail("invalid", `Unterminated HTML ${name} element.`, start);
+    if (django && (source.slice(index, close).includes("{#") || source.slice(index, close).includes("{%"))) {
+      fail("unsupported", `Django template syntax inside <${name}> needs context-aware extraction.`, index);
+    }
+    const contentStart = index;
+    if (mode !== "data") {
+      const result = mode === "css" ? extractCssComments(source.slice(contentStart, close))
+        : extractJavaScriptComments(source.slice(contentStart, close), "javascript");
+      if (result.status !== "ok") {
+        fail(result.status, `${name} content: ${result.diagnostic.message}`,
+          contentStart + result.diagnostic.position.offset);
+      }
+      for (const entry of result.comments) {
+        comments.push(comment(entry.kind, contentStart + entry.start.offset, contentStart + entry.end.offset,
+          contentStart + entry.contentStart.offset, contentStart + entry.contentEnd.offset));
+      }
+    }
+    index = tagEnd(close + after);
+  };
+
   try {
     while (index < source.length) {
       if (source.startsWith("<!--", index)) {
@@ -130,7 +195,24 @@ export function extractMarkupComments(source: string, django: boolean): CommentE
       index = end;
 
       if (!closing) {
-        if (name === "script" || name === "style" || name === "noscript") {
+        if (name === "style" || name === "script") {
+          if (django && (source.slice(nameEnd, end).includes("{#") || source.slice(nameEnd, end).includes("{%"))) {
+            fail("unsupported", `Django template syntax in <${name}> attributes needs context-aware extraction.`, nameStart - 1);
+          }
+          const type = attributes(nameEnd, end - 1).get("type")?.trim().toLowerCase();
+          if (name === "style") {
+            if (type !== undefined && type !== "text/css") fail("unsupported", "Non-CSS <style> content needs another scanner.", nameStart - 1);
+            scanEmbedded("style", nameStart - 1, "css");
+          } else {
+            const mode = type === undefined || ["module", "text/javascript", "application/javascript",
+              "text/ecmascript", "application/ecmascript"].includes(type) ? "javascript"
+              : ["application/json", "application/ld+json", "importmap", "speculationrules"].includes(type) ? "data" : undefined;
+            if (!mode) return fail("unsupported", "Unknown <script> type needs a language-aware scanner.", nameStart - 1);
+            scanEmbedded("script", nameStart - 1, mode);
+          }
+          continue;
+        }
+        if (name === "noscript") {
           fail("unsupported", `Embedded <${name}> content needs a language-aware scanner.`, nameStart - 1);
         }
         if (name === "plaintext") {

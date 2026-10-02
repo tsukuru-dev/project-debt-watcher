@@ -7,7 +7,6 @@ function comments(source) {
   const result = extractHtmlComments(source);
   assert.equal(result.status, "ok", JSON.stringify(result));
   for (const entry of result.comments) {
-    assert.equal(entry.kind, "block");
     assert.equal(source.slice(entry.start.offset, entry.end.offset), entry.raw);
     assert.equal(source.slice(entry.contentStart.offset, entry.contentEnd.offset), entry.text);
   }
@@ -38,11 +37,31 @@ test("HTML comments in attributes and raw-text elements are not reported", () =>
   assert.deepEqual(comments('<plaintext><!-- hidden -->').map((c) => c.text), []);
 });
 
+test("plain style elements return CSS comments with positions in the HTML source", () => {
+  const source = '<!-- first -->\r\n<style type="text/css" media="screen">p::before { content: "/* fake */"; }\r\n/* TODO CSS */</style><!-- last -->';
+  const found = comments(source);
+  assert.deepEqual(found.map((entry) => entry.text), [" first ", " TODO CSS ", " last "]);
+  assert.deepEqual(found.map((entry) => entry.start.offset), [
+    source.indexOf("<!-- first"), source.indexOf("/* TODO"), source.indexOf("<!-- last"),
+  ]);
+  assert.equal(found[1].start.line, 3);
+});
+
+test("script comments are extracted but strings and non-JavaScript data are not", () => {
+  const source = '<!-- first --><script type="module">const text = "// fake"; // TODO JS\n'
+    + 'const regex = /[/*]/; /* FIXME JS */</script>'
+    + '<script type="application/json">{"note":"// fake /* fake */"}</script><!-- last -->';
+  const found = comments(source);
+  assert.deepEqual(found.map((entry) => entry.text), [" first ", " TODO JS", " FIXME JS ", " last "]);
+  assert.equal(found[1].start.offset, source.indexOf("// TODO JS"));
+  assert.equal(found[2].start.offset, source.indexOf("/* FIXME JS */"));
+});
+
 test("HTML reports unsupported embedded or template syntax instead of partial results", () => {
   for (const source of [
-    "<!-- first --><script>// TODO</script>",
-    "<!-- first --><style>/* TODO */</style>",
     "<!-- first --><script/><!-- TODO after -->",
+    "<!-- first --><script type=\"text/babel\">/* TODO */</script>",
+    "<!-- first --><style type=\"text/less\">/* TODO */</style>",
     "<!-- first -->{% comment %}TODO{% endcomment %}",
     "<!-- first -->{# TODO #}",
     '<div title="{# TODO #}"><!-- later --></div>',
@@ -57,7 +76,9 @@ test("HTML reports unsupported embedded or template syntax instead of partial re
 });
 
 test("HTML reports malformed comments and tags without partial results", () => {
-  for (const source of ["<!-- first --><!-- unfinished", '<p title="unfinished', "<!-- first --><div"]) {
+  for (const source of ["<!-- first --><!-- unfinished", '<p title="unfinished', "<!-- first --><div",
+    "<!-- first --><style>/* unfinished</style>", "<!-- first --><style>p { color: red; }",
+    "<!-- first --><script>/* unfinished</script>"]) {
     const result = extractHtmlComments(source);
     assert.equal(result.status, "invalid", source);
     assert.deepEqual(result.comments, []);

@@ -42,6 +42,16 @@ test("Django single-line comments preserve offsets and CRLF positions", () => {
   assert.deepEqual(second.start, { offset: 17, line: 3, column: 1 });
 });
 
+test("Django templates can scan plain CSS styles between template comments", () => {
+  const source = '{# first #}<style>/* TODO CSS */</style><!-- last -->';
+  assert.deepEqual(comments(source).map((entry) => entry.text), [" first ", " TODO CSS ", " last "]);
+});
+
+test("Django templates can scan JavaScript in plain script tags", () => {
+  const source = '{# first #}<script>const text = "// fake"; // TODO JS\n</script><!-- last -->';
+  assert.deepEqual(comments(source).map((entry) => entry.text), [" first ", " TODO JS", " last "]);
+});
+
 test("Django malformed or unsupported constructs never return partial comments", () => {
   const cases = [
     ["<!-- first -->{# TODO\n next #}", "invalid"],
@@ -49,7 +59,8 @@ test("Django malformed or unsupported constructs never return partial comments",
     ["<!-- first -->{% endcomment %}", "invalid"],
     ["<!-- first -->{% comment %}{% comment %}{% endcomment %}", "invalid"],
     ['<!-- first -->{% comment "TODO note" %}body{% endcomment %}', "unsupported"],
-    ["<!-- first --><script>/* TODO */</script>", "unsupported"],
+    ["<!-- first --><script>{% if active %}/* TODO */{% endif %}</script>", "unsupported"],
+    ["<!-- first --><style>{% if dark %}/* TODO */{% endif %}</style>", "unsupported"],
     ["<!-- first --><title>{# TODO #}</title>", "unsupported"],
   ];
   for (const [source, status] of cases) {

@@ -1,12 +1,12 @@
 # Comment scanner: current implementation
 
-Branch selection, committed source reads, JavaScript/TypeScript, C/C++, Python, Ruby, Go, Rust and initial PHP comment lexers, CSS, plain HTML and initial Django template comment extraction, and official Python/Ruby/Go/PHP tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
+Branch selection, committed source reads, initial extractors for every listed language family, and official Python/Ruby/Go/PHP tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
 
 `selectBranches` snapshots every named local branch by default. Remote scope snapshots existing remote-tracking branches from all remotes, excluding symbolic aliases such as `origin/HEAD`. Tags are excluded. An empty repository returns no branches. Detached HEAD does not add an unnamed branch to the set. Different branches pointing to the same commit remain separate snapshots.
 
 Each snapshot records the full ref, display name, scope and commit ID. Later reads use that immutable commit rather than resolving the branch again. Moving or deleting a branch during a scan therefore does not change the saved source snapshot. Files come from commits, not the staging area or working directory. Untracked files and uncommitted edits are not included in this layer.
 
-`listSourceFiles` enumerates regular tracked blobs throughout the commit tree, including executable source files. Symlinks and submodules are excluded. No implicit folder exclusions are applied: tracked source in a vendor/generated directory remains a candidate. Candidate extensions cover Python, Ruby, JavaScript/Node, JSX, TypeScript, TSX, CSS, C/C++ and headers, Rust, Go, PHP, and HTML/Django templates. Classification selects a language-specific extractor; several language extractors are still pending.
+`listSourceFiles` enumerates regular tracked blobs throughout the commit tree, including executable source files. Symlinks and submodules are excluded. No implicit folder exclusions are applied: tracked source in a vendor/generated directory remains a candidate. Candidate extensions cover Python, Ruby, JavaScript/Node, JSX, TypeScript, TSX, CSS, C/C++ and headers, Rust, Go, PHP, and HTML/Django templates. Classification selects a language-specific extractor; unsupported syntax within those languages remains explicit.
 
 Filenames are preserved using Git's NUL-delimited tree output. Blob reads use full object IDs, so spaces, tabs, newlines, colons or shell characters in filenames are never interpreted as shell commands or revision expressions. The same APIs support SHA-1 and SHA-256 object IDs. Reads work from nested directories and linked worktrees without changing the checkout or index.
 
@@ -18,23 +18,23 @@ These reads require Git 2.45 or newer for `--no-lazy-fetch`. They do not fetch r
 
 ## Language-specific comment syntax
 
-Markers remain plain text such as `TODO` or `FIXME`. The language extractor determines which text is actually inside a comment before marker matching happens.
+Markers remain plain text such as `TODO` or `FIXME`. The language extractor determines which text is actually inside a comment before marker matching happens. These extractors identify comment boundaries and avoid comment-looking text in strings or other non-comment contexts; they do not aim to validate complete language grammars.
 
 | Language | Comment syntax | Status |
 | --- | --- | --- |
 | JavaScript / TypeScript / Node | `// ...`, `/* ... */`, including JSDoc | Initial lexer implemented, with limitations below |
-| JSX / TSX / React | JS comments in expressions, including `{/* ... */}`; plain JSX text is not a comment | Pending |
+| JSX / TSX / React | JS comments in expressions, including `{/* ... */}`; plain JSX text is not a comment | Initial built-in lexer implemented, with limitations below |
 | Python | `# ...`, including comments inside f/t-string expressions; literal text and docstrings are not comments | Official tokenizer adapter plus built-in lexer; 168 focused Python tests passed |
 | Ruby | `# ...`, column-one `=begin` / `=end` blocks | Ripper adapter plus limited built-in fallback; real-Ruby verification pending in the current environment |
 | C/C++ and headers | `// ...`, `/* ... */` | Initial built-in lexer implemented; see scope below |
-| Rust | `// ...`, `/* ... */`, including nested blocks and doc comments | Built-in lexer implemented; new tests unrun |
+| Rust | `// ...`, `/* ... */`, including nested blocks and doc comments | Built-in lexer implemented; focused tests passed |
 | Go | `// ...`, non-nesting `/* ... */` | Official `go/scanner` adapter plus built-in lexer; focused tests passed, real-Go check skipped |
 | CSS | `/* ... */` | Implemented for plain CSS; see scope below |
-| Plain HTML | `<!-- ... -->` | Initial extractor implemented; embedded languages remain pending |
-| Django HTML templates | `{# ... #}`, `{% comment %} ... {% endcomment %}`, `<!-- ... -->` | Initial extractor implemented; see scope below |
+| Plain HTML | `<!-- ... -->`; CSS in `<style>` and JavaScript in `<script>` | Initial embedded comment extraction implemented; see scope below |
+| Django HTML templates | `{# ... #}`, `{% comment %} ... {% endcomment %}`, `<!-- ... -->`; CSS/JavaScript in plain style/script elements | Initial extractor implemented; see scope below |
 | PHP with HTML | PHP `// ...`, `# ...`, `/* ... */`; HTML `<!-- ... -->` outside PHP tags | Official `token_get_all()` adapter plus limited built-in fallback; real-PHP check pending |
 
-Ruby classification includes `.rb`, `.rake`, `.gemspec`, and exact filenames `Gemfile` and `Rakefile`. ERB templates are not covered. PHP classification includes `.php` and `.phtml`. `.c` is classified as C; `.h` remains classified with C++ headers because its language cannot be determined from the extension alone. This table does not imply all required languages are implemented.
+Ruby classification includes `.rb`, `.rake`, `.gemspec`, and exact filenames `Gemfile` and `Rakefile`. ERB templates are not covered. PHP classification includes `.php` and `.phtml`. `.c` is classified as C; `.h` remains classified with C++ headers because its language cannot be determined from the extension alone. All listed families have an initial extractor, with the documented limits below.
 
 Plain `.html` and `.htm` files are classified as HTML; `.djhtml` and `.django` are classified as Django templates. A Django template stored as `.html` currently returns `unsupported` when the plain HTML extractor encounters `{#` or `{%`. The Django extractor exists separately, but choosing it for a `.html` file is not yet wired into orchestration.
 
@@ -46,19 +46,19 @@ Plain `.html` and `.htm` files are classified as HTML; `.djhtml` and `.django` a
 
 ## Plain HTML extraction
 
-`extractHtmlComments(source)` extracts `<!-- ... -->` comments from plain HTML while preserving original text and UTF-16 positions. It skips quoted tag attributes and text-only elements such as `<title>` and `<textarea>`, where a comment-looking sequence is text. Unterminated comments or tags return `invalid` with no partial comments. Embedded `<script>`, `<style>` and `<noscript>` content, Django delimiters, PHP processing tags, and unsupported declarations return `unsupported` with no partial comments. These areas require separate language handling; this extractor does not claim to scan them. It does not render or execute HTML or templates, and it is not yet wired into reports.
+`extractHtmlComments(source)` extracts `<!-- ... -->` comments from plain HTML while preserving original text and UTF-16 positions. It skips quoted tag attributes and text-only elements such as `<title>` and `<textarea>`, where a comment-looking sequence is text. It scans CSS in `<style>` and JavaScript in `<script>` using the corresponding comment extractors, mapping all comment positions back to the original HTML source. Common `type` attributes select CSS or JavaScript; known JSON/data script types are inert and skipped. Unknown embedded types, `<noscript>` content, Django delimiters, PHP processing tags, and unsupported declarations return `unsupported`. Malformed comments, tags or embedded content return `invalid`. A failure discards all partial comments. It does not render or execute HTML or templates, and it is not yet wired into reports.
 
 ## Django template extraction
 
 `extractDjangoTemplateComments(source)` uses the same HTML context rules and also recognises single-line `{# ... #}` comments and `{% comment %} ... {% endcomment %}` blocks. It skips ordinary `{% ... %}` and `{{ ... }}` tokens, including those inside HTML attributes, so their contents cannot be mistaken for HTML syntax. Template and HTML comments retain original source positions and are returned in source order. Content inside a Django comment block is one comment, even if it contains broken template tags, other comment-looking text or HTML comment delimiters.
 
-This first chunk rejects multiline `{# ... #}` comments, nested or unmatched `{% comment %}` tags, and opening comment tags with an optional note. The latter is valid Django syntax but is `unsupported` until its note can be represented without dropping markers. Django tokens inside raw-text HTML elements and embedded `<script>`/`<style>` content are also `unsupported`; malformed tokens are `invalid`. Failures return no partial comments. No Django package is imported, no template is rendered, and this extractor is not yet wired into reports.
+This first chunk rejects multiline `{# ... #}` comments, nested or unmatched `{% comment %}` tags, and opening comment tags with an optional note. The latter is valid Django syntax but is `unsupported` until its note can be represented without dropping markers. Plain CSS and JavaScript inside style/script elements are scanned; Django tokens within those elements remain `unsupported`, as are Django tokens inside other raw-text elements. Malformed tokens are `invalid`. Failures return no partial comments. No Django package is imported, no template is rendered, and this extractor is not yet wired into reports.
 
 ## PHP fallback extraction
 
 `extractPhpComments(source)` recognises `<?php ... ?>` and `<?= ... ?>` regions without running the code. Inside PHP it extracts `//`, `#`, and non-nesting `/* ... */` comments, skips quoted strings, and treats PHP 8 `#[...]` attributes as code rather than hash comments. PHP line comments end at a newline or at `?>`, whichever comes first. Outside PHP, it delegates to the plain HTML extractor. Original text and positions are preserved across PHP and HTML regions, and comments are returned in source order. A PHP region overlapping an HTML comment is `unsupported` until mixed-language overlap semantics are defined.
 
-This is a deliberately bounded fallback. Short `<?` tags depend on PHP settings and are `unsupported`, as are heredoc, nowdoc, backticks, complex string interpolation, and HTML scripts or styles. Unterminated strings and block comments are `invalid`. All failure results have no partial comments. The extractor is not yet wired into reports.
+This is a deliberately bounded fallback. Short `<?` tags depend on PHP settings and are `unsupported`, as are heredoc, nowdoc, backticks and complex string interpolation. HTML outside PHP delegates to the HTML extractor, including its script/style handling when the embedded content is wholly outside PHP. Unterminated strings and block comments are `invalid`. All failure results have no partial comments. The extractor is not yet wired into reports.
 
 ### Official PHP tokenizer
 
@@ -74,9 +74,11 @@ The helper runs through PHP CLI `-n -r` without loading `php.ini`, from the inte
 
 Successful extraction returns `status: "ok"` and the comments, including comments without debt markers. This is not a JavaScript/TypeScript compiler or complete grammar validator. Unterminated strings/comments/regexes/templates and unbalanced delimiters produce `status: "invalid"`. Syntax requiring an unimplemented rule produces `status: "unsupported"`. Both return a position and diagnostic with no partial comments. Future reporting must surface these diagnostics rather than report the file as debt-free.
 
-The first lexer chunk deliberately leaves JSX/TSX, decorators, escaped identifiers, legacy HTML-style JS comments, Unicode-set regexes and nested/literal opening brackets in regex classes unsupported. It also stops at uncertain regex-versus-division contexts, such as immediately after a closing brace, `await`/`yield`, ambiguous `>`/postfix `!`, or a TypeScript operand followed by a newline and slash. TypeScript angle-bracket assertions and generic arrows need a later rule. These restrictions can reject valid code; they must not silently trigger a plain-text marker search. Nested templates have a limit of 128 expression levels.
+The JSX/TSX fallback now handles ordinary elements, fragments, nested elements, quoted attributes and JavaScript expression containers, including `{/* ... */}`. Comment-looking text in children or quoted attributes is ignored. Unsupported tag or attribute syntax returns a diagnostic with no partial results. This is an initial lexical subset, not full JSX/TSX grammar validation.
 
-An optional official TypeScript parser remains under investigation. This project's TypeScript build dependency is 7.0.2, and the [TypeScript 7.0 release notes](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/) state that 7.0 does not ship a stable programmatic API. The installed package exposes only `unstable` parser entry points. We therefore do not use those entry points for comment extraction or add TypeScript 6 as a new runtime dependency without discussing that packaging choice. The built-in scanner remains the fallback, and JSX/TSX still return `unsupported`.
+The lexer deliberately leaves decorators, escaped identifiers, legacy HTML-style JS comments, Unicode-set regexes and nested/literal opening brackets in regex classes unsupported. It also stops at uncertain regex-versus-division contexts, such as immediately after a closing brace, `await`/`yield`, ambiguous `>`/postfix `!`, or a TypeScript operand followed by a newline and slash. TypeScript angle-bracket assertions and generic arrows need a later rule. These restrictions can reject valid code; they must not silently trigger a plain-text marker search. Nested templates and JSX elements have a limit of 128 levels.
+
+An optional official TypeScript parser remains under investigation. This project's TypeScript build dependency is 7.0.2, and the [TypeScript 7.0 release notes](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/) state that 7.0 does not ship a stable programmatic API. The installed package exposes only `unstable` parser entry points. We therefore do not use those entry points for comment extraction or add TypeScript 6 as a new runtime dependency without discussing that packaging choice. The built-in scanner covers the JSX/TSX subset above.
 
 No Git calls, file writes, source execution, module imports from scanned code or project configuration loading occur during extraction. Tests separately check the lexer and its use with committed-source reads. It is not yet wired into the report command.
 
@@ -92,7 +94,7 @@ This first fallback does not run a preprocessor or compiler. Line splicing and t
 
 Original text and UTF-16 offsets are retained. CSS line counting recognises CRLF, CR, LF and form feed; Unicode separators U+2028/U+2029 are not CSS newlines. CSS character replacement is applied only during token recognition, never to returned source text.
 
-Malformed strings, escapes, URLs or unterminated comments return `invalid` with a position and no partial comments. This is deliberately stricter than browser error recovery. It is a comment lexer, not a declaration validator; it does not validate properties, nesting or balanced braces. SCSS, Sass, Less and embedded HTML styles are outside this extractor's scope. It never fetches URLs, follows imports or executes source.
+Malformed strings, escapes, URLs or unterminated comments return `invalid` with a position and no partial comments. This is deliberately stricter than browser error recovery. It is a comment lexer, not a declaration validator; it does not validate properties, nesting or balanced braces. SCSS, Sass and Less remain outside this extractor's scope. HTML style elements now delegate to this extractor. It never fetches URLs, follows imports or executes source.
 
 ## Python extraction
 

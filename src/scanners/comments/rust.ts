@@ -36,7 +36,11 @@ export function extractRustComments(source: string): CommentExtraction {
     const close = '"' + "#".repeat(count);
     index++;
     while (index < source.length) {
-      if (source.startsWith(close, index)) { index += close.length; return; }
+      if (source.startsWith(close, index)) {
+        index += close.length;
+        if (source[index] === "#") fail("Extra hash after Rust raw string delimiter.", index);
+        return;
+      }
       if (source[index] === "\r" && source[index + 1] !== "\n") fail("Bare CR in a Rust raw string.");
       if (prefix === "cr" && source[index] === "\0") fail("NUL in a Rust C string.");
       if (prefix === "br" && source.codePointAt(index)! > 0x7f) fail("Non-ASCII character in a Rust raw byte string.");
