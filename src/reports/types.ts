@@ -5,6 +5,7 @@ import type { SourceComment, SourcePosition } from "../scanners/comments/types.j
 import type { CommentScanResult } from "../scanners/comments/scan.js";
 import type { DebtWatcherConfig } from "../config/types.js";
 import type { AgeCategory, AgeThresholds } from "./ages.js";
+import type { ReportFilters } from "../commands/arguments.js";
 
 /** A flagged source comment is one finding, even when it contains several markers. */
 export interface CodeFinding {
@@ -33,5 +34,20 @@ export interface CodeFindingsSnapshot {
   thresholds: AgeThresholds;
   findings: CodeFinding[];
   unscanned: UnscannedFile[];
+  oldest: CodeFinding | undefined;
+}
+
+/** The selected code-only view; totals and oldest describe only the matching findings. */
+export interface CodeReportView {
+  generatedAt: string;
+  branches: BranchSnapshot[];
+  backends: CommentScanResult["backends"];
+  settings: DebtWatcherConfig;
+  thresholds: AgeThresholds;
+  filters: ReportFilters & { includeFresh: boolean };
+  order: "oldnew" | "newold";
+  findings: CodeFinding[];
+  unscanned: UnscannedFile[];
+  counts: { total: number; code: number; categories: Record<AgeCategory, number> };
   oldest: CodeFinding | undefined;
 }
