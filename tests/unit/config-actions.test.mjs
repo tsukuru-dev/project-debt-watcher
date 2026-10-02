@@ -4,7 +4,8 @@ import { test } from "node:test";
 import { applyConfigurationEdit, parseConfigurationEdit } from "../../dist/config/actions.js";
 
 const template = JSON.parse(readFileSync(new URL("../../templates/debt-watcher.config.json", import.meta.url), "utf8"));
-const custom = { ...template, ageing: 60, buried: 120, fossil: 365 };
+const { ageing: _ageing, buried: _buried, ...automatic } = template;
+const custom = { ...template, ageing: 60, buried: 120 };
 const set = (document, ...assignments) => applyConfigurationEdit(document,
   parseConfigurationEdit({ action: "set", assignments }));
 
@@ -13,16 +14,16 @@ test("fresh alone selects automatic bands even when the saved freshness value is
   const result = set(original, "fresh=30");
   assert.equal(result.changed, true);
   assert.match(result.message, /automatic age bands/);
-  assert.deepEqual(result.document, { ...template, $schema: "./schema.json", metadata: { team: "tools" } });
+  assert.deepEqual(result.document, { ...automatic, $schema: "./schema.json", metadata: { team: "tools" } });
   assert.equal(original.ageing, 60);
 });
 
 test("custom bands are merged and validated together, not one assignment at a time", () => {
   assert.throws(() => set(custom, "ageing=150"), /increase strictly/);
-  const result = set(custom, "ageing=150", "buried=200", "fresh=250");
-  assert.deepEqual(result.document, { ...custom, fresh: 250, ageing: 150, buried: 200 });
-  assert.throws(() => set(template, "fresh=45", "ageing=60"), /together/);
-  assert.deepEqual(set(template, "ageing=60", "buried=120", "fossil=365").document, custom);
+  const result = set(custom, "ageing=150", "buried=200", "fresh=45");
+  assert.deepEqual(result.document, { ...custom, fresh: 45, ageing: 150, buried: 200 });
+  assert.throws(() => set(automatic, "fresh=45", "ageing=60"), /together/);
+  assert.deepEqual(set(template, "ageing=60", "buried=120").document, custom);
 });
 
 test("settings without fresh preserve custom bands and do not mutate the input", () => {

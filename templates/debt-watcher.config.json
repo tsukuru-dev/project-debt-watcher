@@ -1,5 +1,7 @@
 {
   "fresh": 30,
+  "ageing": 60,
+  "buried": 90,
   "markers": [
     "TODO",
     "FIXME",
@@ -11,5 +13,8 @@
   "includeFresh": false,
   "showAuthors": true,
   "order": "oldnew",
-  "reportDirectory": "./debt-watcher-reports"
+  "reportDirectory": "./debt-watcher-reports",
+  "metadata": {
+    "ageBandsNote": "Each setting is an inclusive maximum age: fresh <= fresh, ageing <= ageing, buried <= buried; fossil is > buried. In this template that means 0-30, 31-60, 61-90, and 91+ days."
+  }
 }

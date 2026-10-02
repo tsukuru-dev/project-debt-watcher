@@ -4,6 +4,10 @@ import { join, relative } from "node:path";
 import { test } from "node:test";
 import { configFilename, fixture, template } from "../helpers/config-fixture.mjs";
 
+const { metadata: _templateNotes, ...templateSettings } = template;
+const { ageing: _ageing, buried: _buried, ...automaticSettings } = templateSettings;
+const { ageing: _templateAgeing, buried: _templateBuried, ...automaticTemplate } = template;
+
 const read = (path) => JSON.parse(readFileSync(path, "utf8"));
 const interactiveEnv = (f) => ({ ...f.env, CI: "" });
 const terminal = (overrides = {}) => ({
@@ -24,7 +28,7 @@ test("repository-to-personal copy validates first, creates only settings, and re
   assert.equal(result.status, 0, result.stderr);
   assert.ok(result.stdout.includes(source));
   assert.ok(result.stdout.includes(destination));
-  assert.deepEqual(read(destination), { ...template, fresh: 45, markers: ["TO DO"] });
+  assert.deepEqual(read(destination), { ...templateSettings, fresh: 45, markers: ["TO DO"] });
   assert.equal(readFileSync(source, "utf8"), before);
   assert.deepEqual(readdirSync(repo).sort(), [".git", configFilename].sort());
   assert.deepEqual(readdirSync(f.personalDirectory), [configFilename]);
@@ -39,7 +43,7 @@ test("explicit personal-to-repository copy can create a missing config without p
   const before = readFileSync(source, "utf8");
   const result = await f.invoke(["config", "--copy-from", "global", "--repo", repo]);
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(read(join(repo, configFilename)), { ...template, fresh: 60, reportDirectory: "./shared reports" });
+  assert.deepEqual(read(join(repo, configFilename)), { ...automaticSettings, fresh: 60, reportDirectory: "./shared reports" });
   assert.deepEqual(readdirSync(repo).sort(), [".git", configFilename].sort());
   assert.equal(readFileSync(source, "utf8"), before);
   assert.equal(existsSync(join(repo, "shared reports")), false);
@@ -49,7 +53,7 @@ test("confirmed copy replaces lists and custom bands but preserves destination m
   const f = fixture(t);
   const repo = f.repository();
   const source = f.writeConfig(f.personalDirectory, { markers: ["TO DO"], metadata: { secret: "never transfer" } });
-  const path = f.writeConfig(repo, { ageing: 60, buried: 120, fossil: 365,
+  const path = f.writeConfig(repo, { ageing: 60, buried: 120,
     $schema: "./team-schema.json", metadata: { team: "tools" } });
   const beforeSource = readFileSync(source, "utf8");
   let asked = 0;
@@ -210,7 +214,7 @@ test("explicit personal opening creates template defaults without a repository o
   const options = terminal({ openEditor: async (file) => {
     opened++;
     assert.equal(file, path);
-    assert.deepEqual(read(file), opened === 1 ? template : { ...template, fresh: 90 });
+    assert.deepEqual(read(file), opened === 1 ? template : { ...automaticTemplate, fresh: 90 });
   } });
   const result = await f.invoke(["--global", "config"], f.root, env, options);
   assert.equal(result.status, 0, result.stderr);

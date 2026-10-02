@@ -100,7 +100,6 @@ function createProgram(options: CliOptions): Command {
     .option("--fresh <days>", "Override the freshness threshold for this run", parseDays)
     .option("--ageing <days>", "Override the ageing threshold for this run", parseDays)
     .option("--buried <days>", "Override the buried threshold for this run", parseDays)
-    .option("--fossil <days>", "Override the fossil threshold for this run", parseDays)
     .option("--markers <list>", "Replace markers for this run (comma-separated)", parseMarkers)
     .addOption(new Option("--order <direction>", "Order results oldest/newest first")
       .choices(["oldnew", "newold"]))
@@ -141,7 +140,7 @@ function createProgram(options: CliOptions): Command {
     "With no action, open the selected config in an editor (interactive terminals only).",
     "Copies replace settings, preserving destination metadata; existing settings require confirmation.",
     "Examples:",
-    "  debt-watcher config --set fresh=30 ageing=60 buried=120 fossil=365",
+    "  debt-watcher config --set fresh=30 ageing=60 buried=120",
     '  debt-watcher config --add markers="TO DO,FIXME"',
     "  debt-watcher --global config --set fresh=30",
     "  debt-watcher --global config --copy-from repo",

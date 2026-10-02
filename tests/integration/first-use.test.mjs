@@ -8,6 +8,9 @@ import { isGlobalInstallation } from "../../dist/setup/installation.js";
 import { configFilename, fixture, template } from "../helpers/config-fixture.mjs";
 import { materialise, npmFixture } from "../helpers/setup-fixture.mjs";
 
+const { metadata: _templateNotes, ...templateSettings } = template;
+const { ageing: _ageing, buried: _buried, ...automaticSettings } = templateSettings;
+
 const read = (path) => JSON.parse(readFileSync(path, "utf8"));
 const forbidden = async () => assert.fail("Unexpected prompt, editor or npm invocation");
 
@@ -60,7 +63,7 @@ test("personal defaults are copied as settings only and do not continuously over
     assert.equal(path, personal); return "personal";
   } };
   assert.equal((await h.invoke(["init"], { terminal })).status, 0);
-  assert.deepEqual(read(join(repo, configFilename)), { ...template, fresh: 65, markers: ["TO DO"] });
+  assert.deepEqual(read(join(repo, configFilename)), { ...automaticSettings, fresh: 65, markers: ["TO DO"] });
   f.writeConfig(f.personalDirectory, { fresh: 99 });
   const result = await h.invoke(["graveyard"], { terminal: { interactive: true, confirm: forbidden, openEditor: forbidden, chooseDefaults: forbidden } });
   assert.equal(result.status, 0, result.stderr);

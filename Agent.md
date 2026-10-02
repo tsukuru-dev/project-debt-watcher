@@ -42,15 +42,15 @@ For `npx`, use `npx debt-watcher graveyard --summary`. The package and executabl
 ### Temporary overrides and permanent settings
 
 - Report flags override repository configuration for one run only; they never save settings. No `-t` or `--configedit` flag is needed.
-- Support `--fresh 60`, `--ageing 60`, `--buried 120`, and `--fossil 365`, with thresholds expressed in days.
-- A freshness override by itself uses automatic three-band calculation, overriding saved custom age bands for that run. Explicit age-band flags select custom bands; merge unspecified bands with saved custom values, then reject incomplete or non-ascending thresholds. When freshness and explicit bands are supplied together, use the supplied freshness filter and explicit custom bands.
+- The supplied config defaults to `fresh=30`, `ageing=60`, and `buried=90` days. Fresh includes ages up to and including `fresh`; ageing includes ages above fresh through `ageing`; buried includes ages above ageing through `buried`; fossil includes anything older than buried and has no separate threshold. Support temporary `--fresh`, `--ageing`, and `--buried` overrides.
+- A freshness override by itself uses automatic three-band calculation, overriding saved custom age bands for that run. Explicit age-band flags select custom bands; merge unspecified bands with saved custom values, then reject incomplete or non-ascending thresholds. Custom thresholds must satisfy `fresh < ageing < buried`. When freshness and explicit bands are supplied together, use the supplied freshness boundary and explicit custom bands.
 - Support `--markers TODO,FIXME` as a replacement marker list for the run. Store markers as plain strings without language comment delimiters.
 - Support `--filter includefresh=true` and `--filter includefresh=false` to override the saved `includeFresh` boolean for the run. Do not use separate fresh-inclusion flags. This changes inclusion, not the configured day thresholds.
 - Support `--repo "../another-project"` to target another local Git repository. Resolve this path against the invocation's working directory, then use the target repository's configuration, setup, and report snapshot. It is a local path, not a request to clone a remote URL.
 - Allow report flags to combine, including `--summary`, marker filters, age settings, ordering, debt-type and author filters, and repository selection, except for the incompatible save modes documented below.
 - `debt-watcher config` opens the current repository's existing configuration; `debt-watcher init` creates or repairs integration. Do not duplicate these actions with a `--setup` flag.
 - Permanent CLI changes use configuration action flags: `--set`, `--add`, `--remove`, `--list`, or `--copy-from`. Permit only one action per invocation. With no action, `debt-watcher config` opens the selected config in the editor.
-- `--set key=value` replaces that setting, for example `debt-watcher config --set fresh=60`, `debt-watcher config --set includeFresh=true`, or `debt-watcher config --set showAuthors=false`. Support multiple assignments within a single `--set` action so custom age thresholds can be updated and validated together before any write, for example `debt-watcher config --set fresh=30 ageing=60 buried=120 fossil=365`.
+- `--set key=value` replaces that setting, for example `debt-watcher config --set fresh=60`, `debt-watcher config --set includeFresh=true`, or `debt-watcher config --set showAuthors=false`. Support multiple assignments within a single `--set` action so custom age thresholds can be updated and validated together before any write, for example `debt-watcher config --set fresh=30 ageing=60 buried=120`.
 - `debt-watcher config --set markers="TODO,FIXME"` replaces the entire marker list. `--add markers="TODO,FIXME"` appends missing markers without duplicates; `--remove markers="HACK"` removes the listed markers without changing the others. Adding an existing marker or removing an absent one leaves the list unchanged and reports that result.
 - `debt-watcher config --list markers` displays the current marker list; `--list` without a key displays all saved settings and the selected configuration file path. Listing must not edit settings or open an editor.
 - Treat a quoted comma-separated marker value as one argument, split on commas, trim surrounding whitespace, and preserve spaces inside markers. For example `--add markers="TO DO"` adds one marker, and `--add markers="TO DO,FIXME"` adds two. Reject empty markers; literal commas inside marker names are not supported by this CLI list syntax. Markers contain no language comment delimiters.
@@ -124,13 +124,10 @@ Amount of days freshness and unresolved code comment markers can be modified and
 
 We provide the template which acts as the defaults which user can edit
 
-as a default we only set the freshness threshold and do the below
-Emoji is dictated by oldest graveyard item - stipulated length/3
-each third then gets its own emoji demarking it as low medium high
-or the user can set up freshness thresholds themselves if they want to be specific and not just set the single freshness filter
+The supplied template sets fixed age boundaries of 30, 60, and 90 days. For saved configs that omit both `ageing` and `buried`, the range beyond `fresh` is divided into three automatic bands using the oldest graveyard item; each band has its own emoji.
 
 
-So user can either set just the fresh threshold or they can be more specific and set the ageing(💀) buried (🪦) and fossil (🦖) thresholds
+So user can either set just the fresh threshold or set the ageing (💀) and buried (🪦) upper bounds. Fossil (🦖) applies to anything older than buried, without its own setting.
 
 CLI overrides are temporary. A freshness-only override uses the /3 rule; explicit custom age-band overrides use their validated thresholds instead.
 

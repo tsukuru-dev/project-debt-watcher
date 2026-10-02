@@ -5,6 +5,8 @@ import { test } from "node:test";
 import { readConfiguration, saveConfiguration } from "../../dist/config/store.js";
 import { configFilename, fixture, listedSettings, template } from "../helpers/config-fixture.mjs";
 
+const { ageing: _ageing, buried: _buried, ...automatic } = template;
+
 function saved(path) {
   return JSON.parse(readFileSync(path, "utf8").replace(/^\uFEFF/, ""));
 }
@@ -29,7 +31,7 @@ test("set persists typed values and metadata in the active checkout without stag
     "showAuthors=false", "order=newold", "reportDirectory=./reports with spaces=latest",
     "markers=TO DO,FIXME"], nested);
   success(result, path);
-  assert.deepEqual(saved(path), { ...template, ...extra, fresh: 45, includeFresh: true,
+  assert.deepEqual(saved(path), { ...automatic, ...extra, fresh: 45, includeFresh: true,
     showAuthors: false, order: "newold", reportDirectory: "./reports with spaces=latest", markers: ["TO DO", "FIXME"] });
   assert.deepEqual(listedSettings(await f.invoke(["config", "--list"], repo)), saved(path));
   assert.equal(f.git(repo, ["diff", "--cached"]), "");
@@ -42,15 +44,14 @@ test("set persists typed values and metadata in the active checkout without stag
 test("multiple thresholds save together and fresh alone later removes custom bands", async (t) => {
   const f = fixture(t);
   const repo = f.repository();
-  const path = f.writeConfig(repo, { ageing: 60, buried: 120, fossil: 365 });
+  const path = f.writeConfig(repo, { ageing: 60, buried: 120 });
   success(await f.invoke(["config", "--set", "ageing=150", "buried=200"], repo), path);
   assert.equal(saved(path).ageing, 150);
   assert.equal(saved(path).buried, 200);
-  assert.equal(saved(path).fossil, 365);
   const result = await f.invoke(["config", "--set", "fresh=30"], repo);
   success(result, path);
   assert.match(result.stdout, /automatic age bands/);
-  assert.deepEqual(saved(path), template);
+  assert.deepEqual(saved(path), automatic);
 });
 
 test("adding, removing and replacing markers persists changes without duplicates", async (t) => {
@@ -74,7 +75,7 @@ test("no-op edits report no changes and preserve exact bytes and modification ti
   const source = "\uFEFF" + JSON.stringify(template, null, "\t").replaceAll("\n", "\r\n") + "\r\n";
   writeFileSync(path, source);
   const modified = statSync(path).mtimeMs;
-  for (const args of [["--set", "fresh=30"], ["--add", "markers=TODO,TODO"], ["--remove", "markers=ABSENT"]]) {
+  for (const args of [["--set", "showAuthors=true"], ["--add", "markers=TODO,TODO"], ["--remove", "markers=ABSENT"]]) {
     const result = await f.invoke(["config", ...args], repo);
     success(result, path);
     assert.match(result.stdout, /No changes/);
@@ -82,7 +83,8 @@ test("no-op edits report no changes and preserve exact bytes and modification ti
     assert.equal(statSync(path).mtimeMs, modified);
   }
   success(await f.invoke(["config", "--set", "fresh=60"], repo), path);
-  assert.equal(readFileSync(path, "utf8"), source.replace('"fresh": 30', '"fresh": 60'));
+  const after = JSON.parse(readFileSync(path, "utf8").replace(/^\uFEFF/, ""));
+  assert.deepEqual(after, { ...automatic, fresh: 60 });
 });
 
 test("rejected edits and conflicting actions leave the file and directory untouched", async (t) => {
@@ -94,7 +96,7 @@ test("rejected edits and conflicting actions leave the file and directory untouc
   for (const args of [
     ["--set", "fresh=60", "showAuthors=perhaps"],
     ["--set", "fresh=60", "ageing=90"],
-    ["--set", "ageing=120", "buried=60", "fossil=365"],
+    ["--set", "ageing=120", "buried=60"],
     ["--set", "fresh=60", "unknown=true"],
     ["--add", "markers=TODO,,FIXME"],
     ["--remove", "markers=// TODO"],
@@ -114,7 +116,7 @@ test("explicit personal edits initialise defaults outside Git, even if the reque
   const env = { ...f.env };
   for (const key of Object.keys(env)) if (key.toUpperCase() === "PATH") env[key] = "";
   const path = join(f.personalDirectory, configFilename);
-  const result = await f.invoke(["--global", "config", "--set", "fresh=30"], f.root, env);
+  const result = await f.invoke(["--global", "config", "--set", "showAuthors=true"], f.root, env);
   success(result, path);
   assert.match(result.stdout, /Created personal configuration/);
   assert.deepEqual(saved(path), template);
@@ -129,8 +131,8 @@ test("explicit personal edits initialise defaults outside Git, even if the reque
 test("invalid first-use personal edits do not create any configuration directories", async (t) => {
   const f = fixture(t);
   for (const args of [
-    ["--set", "fresh=no"], ["--set", "ageing=60"], ["--add", "markers=TODO,"],
-    ["--set", "ageing=120", "buried=60", "fossil=365"],
+    ["--set", "fresh=no"], ["--set", "ageing=90"], ["--add", "markers=TODO,"],
+    ["--set", "ageing=120", "buried=60"],
     ["--set", "reportDirectory=bad\0path"],
   ]) {
     const result = await f.invoke(["--global", "config", ...args]);
@@ -208,7 +210,7 @@ test("saving a stale snapshot or creating over an existing file fails without ov
   const snapshot = await readConfiguration(location);
   f.writeConfig(f.personalDirectory, { fresh: 90 });
   const before = readFileSync(path, "utf8");
-  await assert.rejects(saveConfiguration(location, { ...snapshot.document, fresh: 60 }, snapshot.source), /changed while editing/);
+  await assert.rejects(saveConfiguration(location, { ...snapshot.document, fresh: 45 }, snapshot.source), /changed while editing/);
   await assert.rejects(saveConfiguration(location, template, null), /already exists/);
   assert.equal(readFileSync(path, "utf8"), before);
   assert.deepEqual(readdirSync(f.personalDirectory), [configFilename]);

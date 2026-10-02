@@ -2,7 +2,7 @@ export const CONFIG_FILENAME = "debt-watcher.config.json";
 
 export const CONFIG_KEYS = [
   "fresh", "markers", "includeFresh", "showAuthors", "order", "reportDirectory",
-  "ageing", "buried", "fossil",
+  "ageing", "buried",
 ] as const;
 
 export type ConfigKey = typeof CONFIG_KEYS[number];
@@ -16,10 +16,10 @@ interface SharedSettings {
   reportDirectory: string;
 }
 
-// Omitting all three thresholds selects automatic bands. A custom set must be complete.
+// Omitting both thresholds selects automatic bands. Fossil is older than buried.
 type AgeBands =
-  | { ageing?: never; buried?: never; fossil?: never }
-  | { ageing: number; buried: number; fossil: number };
+  | { ageing?: never; buried?: never }
+  | { ageing: number; buried: number };
 
 export type DebtWatcherConfig = SharedSettings & AgeBands;
 

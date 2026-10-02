@@ -33,7 +33,6 @@ function settingValue(key: ConfigKey, value: string): SettingValue {
     case "fresh":
     case "ageing":
     case "buried":
-    case "fossil":
       if (!/^\d+$/.test(trimmed) || !Number.isSafeInteger(Number(trimmed))) {
         throw new Error(`${key} must be a non-negative whole number of days.`);
       }
@@ -87,11 +86,10 @@ export function applyConfigurationEdit(
   if (edit.action === "set") {
     Object.assign(candidate, edit.values);
     const useAutomatic = Object.hasOwn(edit.values, "fresh")
-      && !["ageing", "buried", "fossil"].some((key) => Object.hasOwn(edit.values, key));
+      && !["ageing", "buried"].some((key) => Object.hasOwn(edit.values, key));
     if (useAutomatic) {
       delete candidate.ageing;
       delete candidate.buried;
-      delete candidate.fossil;
     }
     message = `Updated settings: ${Object.keys(edit.values).join(", ")}.`
       + (useAutomatic ? " Using automatic age bands." : "");

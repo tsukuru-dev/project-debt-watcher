@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { validateConfiguration } from "../../dist/config/validate.js";
 
 const template = JSON.parse(readFileSync(new URL("../../templates/debt-watcher.config.json", import.meta.url), "utf8"));
+const { ageing: _ageing, buried: _buried, ...automatic } = template;
 
 test("default template is valid and uses the agreed 30-day freshness threshold", () => {
   const result = validateConfiguration(template);
@@ -12,7 +13,10 @@ test("default template is valid and uses the agreed 30-day freshness threshold",
   assert.equal(result.showAuthors, true);
   assert.equal(result.order, "oldnew");
   assert.equal(result.reportDirectory, "./debt-watcher-reports");
-  for (const key of ["ageing", "buried", "fossil"]) assert.equal(Object.hasOwn(result, key), false);
+  assert.equal(result.ageing, 60);
+  assert.equal(result.buried, 90);
+  assert.equal(Object.hasOwn(result, "fossil"), false);
+  assert.deepEqual(validateConfiguration(automatic), automatic);
 });
 
 test("validation preserves saved values and optional metadata without normalising or adding defaults", () => {
@@ -23,8 +27,8 @@ test("validation preserves saved values and optional metadata without normalisin
   assert.equal(JSON.stringify(document), before);
 });
 
-test("a complete custom set is valid; freshness is an independent inclusion threshold", () => {
-  const custom = { ...template, fresh: 90, ageing: 60, buried: 120, fossil: 365 };
+test("a complete custom set has ascending inclusive upper bounds", () => {
+  const custom = { ...template, fresh: 30, ageing: 60, buried: 120 };
   assert.deepEqual(validateConfiguration(custom), custom);
 });
 
@@ -59,20 +63,21 @@ const invalid = [
   [{ markers: [" TODO "] }, /surrounding whitespace/],
   [{ markers: ["TODO", "TODO"] }, /duplicate/],
   [{ ageing: 60 }, /together/],
-  [{ ageing: 60, buried: 120 }, /together/],
-  [{ ageing: 60, buried: 60, fossil: 365 }, /increase strictly/],
-  [{ ageing: 120, buried: 60, fossil: 365 }, /increase strictly/],
-  [{ ageing: 60, buried: 365, fossil: 120 }, /increase strictly/],
-  [{ ageing: "60", buried: 120, fossil: 365 }, /ageing/],
-  [{ ageing: 60, buried: -1, fossil: 365 }, /buried/],
-  [{ ageing: 60, buried: 120, fossil: null }, /fossil/],
+  [{ buried: 120 }, /together/],
+  [{ ageing: 60, buried: 60 }, /increase strictly/],
+  [{ ageing: 120, buried: 60 }, /increase strictly/],
+  [{ fresh: 60, ageing: 60, buried: 120 }, /increase strictly/],
+  [{ ageing: "60", buried: 120 }, /ageing/],
+  [{ ageing: 60, buried: -1 }, /buried/],
+  [{ ageing: 60, buried: 120, fossil: 365 }, /Unknown configuration key 'fossil'/],
   [{ include_fresh: true }, /Unknown configuration key 'include_fresh'/],
   [{ metadata: [] }, /metadata/],
   [{ $schema: 123 }, /\$schema/],
 ];
 for (const [changes, message] of invalid) {
   test(`invalid saved settings: ${JSON.stringify(changes)}`, () => {
-    assert.throws(() => validateConfiguration({ ...template, ...changes }), message);
+    const base = ("ageing" in changes) !== ("buried" in changes) ? automatic : template;
+    assert.throws(() => validateConfiguration({ ...base, ...changes }), message);
   });
 }
 

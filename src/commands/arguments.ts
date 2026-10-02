@@ -24,7 +24,6 @@ export interface GraveyardArguments extends SharedArguments {
   fresh?: number;
   ageing?: number;
   buried?: number;
-  fossil?: number;
   markers?: string[];
   order?: "oldnew" | "newold";
   filter?: ReportFilters;
@@ -117,7 +116,7 @@ export function validateGraveyard(options: GraveyardArguments): void {
   }
   if (options.save === "latest") {
     const changingOptions = [
-      "summary", "order", "filter", "fresh", "ageing", "buried", "fossil",
+      "summary", "order", "filter", "fresh", "ageing", "buried",
       "markers", "remote", "all",
     ] as const;
     const conflict = changingOptions.find((key) => options[key] !== undefined);

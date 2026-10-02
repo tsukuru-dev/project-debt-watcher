@@ -168,4 +168,4 @@ The lexer returns `invalid` with no partial comments for unclosed comments or li
 
 This chunk uses the built-in lexer. Rust is not installed in the development environment, and no runtime was installed. Unit and committed-source integration cases have been added but not run at the user's request. The extractor is not yet wired into reporting.
 
-Next chunks will build report findings and age categories on top of the committed-source scan, then connect rendering and saving. Report integration must expose incomplete coverage and record backend metadata.
+The committed-source scan now feeds a code-finding snapshot. Each flagged comment is one finding, even when it contains several markers; the oldest blamed marker supplies its age and primary author. The snapshot retains skipped, invalid, and unsupported files, along with the selected extraction backends. Age categories use the saved custom bounds or divide the range beyond `fresh` into three automatic bands through the oldest code finding. The CLI report, cross-type age calculation, filtering, rendering, and saving remain later steps.

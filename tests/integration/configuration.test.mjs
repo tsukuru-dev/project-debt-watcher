@@ -131,12 +131,12 @@ test("a directory in place of the config produces a file error", async (t) => {
   assert.match(result.stderr, /Cannot read configuration/);
 });
 
-test("list selectors handle settings, automatic bands, empty markers, and unknown keys", async (t) => {
+test("list selectors handle default bounds, empty markers, and unknown keys", async (t) => {
   const f = fixture(t);
   const repo = f.repository();
   f.writeConfig(repo, { markers: [] });
   for (const [key, expected] of [["fresh", "30"], ["includeFresh", "false"],
-    ["ageing", "(not set; automatic age bands)"], ["markers", "(no markers configured)"]]) {
+    ["ageing", "60"], ["buried", "90"], ["markers", "(no markers configured)"]]) {
     const result = await f.invoke(["config", "--list", key], repo);
     assert.equal(result.status, 0, result.stderr);
     assert.ok(result.stdout.endsWith(`${expected}\n`));

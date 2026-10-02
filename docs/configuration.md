@@ -2,7 +2,7 @@
 
 The shared filename is `debt-watcher.config.json`, stored at the target Git worktree root and committed to Git. The checked-out branch's saved working-tree file governs the entire report, including scans of other branches. Configuration is read again on each invocation, so uncommitted edits and branch changes take effect immediately.
 
-The supplied `templates/debt-watcher.config.json` is a valid starting configuration. Its initial freshness threshold is **30 days** and can be customised for each project. Existing files keep their saved threshold; loading does not merge in template or personal defaults.
+The supplied `templates/debt-watcher.config.json` starts with fixed upper bounds of **30 fresh, 60 ageing, and 90 buried days**. Standard JSON does not allow comments, so its `metadata.ageBandsNote` explains the labels within the file without introducing a `fossil` setting; metadata is informational and does not affect scanning. Existing files keep their saved thresholds; loading does not merge in template or personal defaults.
 
 | Setting | Required value / initial template |
 | --- | --- |
@@ -12,9 +12,9 @@ The supplied `templates/debt-watcher.config.json` is a valid starting configurat
 | `showAuthors` | Boolean; initially `true` |
 | `order` | `oldnew` or `newold`; initially `oldnew` |
 | `reportDirectory` | Non-empty path string; initially `./debt-watcher-reports` |
-| `ageing`, `buried`, `fossil` | Omit all three for automatic bands, or provide all three as strictly increasing non-negative whole-day thresholds |
+| `ageing`, `buried` | Initially `60` and `90`; inclusive upper bounds with `fresh < ageing < buried`. Omit both to calculate bands automatically |
 
-`fresh` controls inclusion independently of the custom age bands. Defining any custom band requires the full set, with `ageing < buried < fossil`. Age calculation and report filtering will be implemented with reporting.
+Age categories use inclusive upper bounds: days 0–30 are fresh, 31–60 ageing, 61–90 buried, and 91 or more fossil with the supplied template. Fossil has no numeric setting. When both `ageing` and `buried` are absent, the non-fresh age range is divided into three automatic bands. `includeFresh` independently controls whether fresh items appear in reports.
 
 Marker entries must be non-empty strings with no surrounding whitespace, duplicates, or language comment delimiters. Spaces inside a marker, such as `TO DO`, are supported. An empty array means no configured code markers. Literal commas can be represented in a JSON marker string, but the CLI comma-separated list syntax cannot express them.
 
@@ -43,7 +43,7 @@ Choose one action per invocation:
 ```sh
 debt-watcher config --set fresh=60
 debt-watcher config --set includeFresh=true showAuthors=false order=newold
-debt-watcher config --set fresh=30 ageing=60 buried=120 fossil=365
+debt-watcher config --set fresh=30 ageing=60 buried=120
 debt-watcher config --set markers="TODO,FIXME"
 debt-watcher config --add markers="TO DO,FIXME"
 debt-watcher config --remove markers="HACK"
@@ -52,7 +52,7 @@ debt-watcher config --set fresh=45 --repo "../another-project"
 debt-watcher --global config --set fresh=60
 ```
 
-`--set` replaces the named settings. Multiple assignments are merged and validated together before writing; an invalid result leaves the file unchanged. Setting `fresh` without an explicit `ageing`, `buried`, or `fossil` assignment removes saved custom bands and selects automatic bands. Explicit band assignments merge with saved bands and must produce a complete, ascending set.
+`--set` replaces the named settings. Multiple assignments are merged and validated together before writing; an invalid result leaves the file unchanged. Setting `fresh` without an explicit `ageing` or `buried` assignment removes saved custom bands and selects automatic bands. Explicit band assignments merge with saved bands and must satisfy `fresh < ageing < buried`.
 
 `--add` and `--remove` operate only on markers. Add appends missing markers, retaining the existing order; remove leaves all other markers alone. Marker matching is exact and case-sensitive. Quote a comma-separated value as one argument; surrounding whitespace is trimmed and internal spaces are kept. Removing all configured markers leaves an empty array.
 

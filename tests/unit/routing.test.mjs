@@ -36,10 +36,10 @@ const routes = [
     "--markers", "TO DO,FIXME", "--filter", "type=code,branches", "--filter", "author=Alex Smith"],
     "graveyard", { remote: true, all: true, order: "newold", fresh: 60, markers: ["TO DO", "FIXME"],
       filter: { type: ["code", "branches"], author: "Alex Smith" } }],
-  [["graveyard", "--fresh", "0", "--ageing", "60", "--buried", "120", "--fossil", "365"],
-    "graveyard", { fresh: 0, ageing: 60, buried: 120, fossil: 365 }],
-  [["config", "--set", "fresh=30", "ageing=60", "buried=120", "fossil=365"],
-    "config", { set: ["fresh=30", "ageing=60", "buried=120", "fossil=365"] }],
+  [["graveyard", "--fresh", "0", "--ageing", "60", "--buried", "120"],
+    "graveyard", { fresh: 0, ageing: 60, buried: 120 }],
+  [["config", "--set", "fresh=30", "ageing=60", "buried=120"],
+    "config", { set: ["fresh=30", "ageing=60", "buried=120"] }],
   [["config", "--add", "markers=TO DO,FIXME"], "config", { add: "markers=TO DO,FIXME" }],
   [["config", "--remove", "markers=HACK"], "config", { remove: "markers=HACK" }],
   [["config", "--list"], "config", { list: true }],
@@ -79,6 +79,7 @@ const invalid = [
   [["graveyard", "save"], /too many arguments/],
   [["config", "set", "fresh=60"], /too many arguments/],
   [["graveyard", "--blame"], /unknown option/],
+  [["graveyard", "--fossil", "365"], /unknown option/],
   [["graveyard", "--include-fresh"], /unknown option/],
   [["config", "--setup"], /unknown option/],
   [["init", "--summary"], /unknown option/],
@@ -124,7 +125,7 @@ for (const [args, pattern] of invalid) {
 }
 
 for (const change of [["--summary"], ["--order", "oldnew"], ["--filter", "includefresh=false"],
-  ["--fresh", "60"], ["--ageing", "60"], ["--buried", "120"], ["--fossil", "365"],
+  ["--fresh", "60"], ["--ageing", "60"], ["--buried", "120"],
   ["--markers", "TODO"], ["--remote"], ["--all"]]) {
   test(`latest snapshot rejects ${change[0]}`, async () => {
     const result = await invoke(["graveyard", "--save", "latest", ...change]);

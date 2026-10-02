@@ -66,19 +66,19 @@ function assertConfiguration(value: unknown): asserts value is ConfigurationDocu
 
   problems.push(...markerProblems(value.markers));
 
-  const customKeys = ["ageing", "buried", "fossil"] as const;
+  const customKeys = ["ageing", "buried"] as const;
   if (customKeys.some((key) => Object.hasOwn(value, key))) {
     if (!customKeys.every((key) => Object.hasOwn(value, key))) {
-      problems.push("Custom age bands require ageing, buried, and fossil together.");
+      problems.push("Custom age bands require ageing and buried together.");
     }
     for (const key of customKeys) {
       if (Object.hasOwn(value, key) && !isDays(value[key])) {
         problems.push(`${key} must be a non-negative whole number of days.`);
       }
     }
-    if (isDays(value.ageing) && isDays(value.buried) && isDays(value.fossil)
-      && !(value.ageing < value.buried && value.buried < value.fossil)) {
-      problems.push("Custom age bands must increase strictly: ageing < buried < fossil.");
+    if (isDays(value.fresh) && isDays(value.ageing) && isDays(value.buried)
+      && !(value.fresh < value.ageing && value.ageing < value.buried)) {
+      problems.push("Age thresholds must increase strictly: fresh < ageing < buried; fossil is older than buried.");
     }
   }
 

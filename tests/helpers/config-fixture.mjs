@@ -50,7 +50,14 @@ export function fixture(t) {
   function writeConfig(directory, changes = {}) {
     mkdirSync(directory, { recursive: true });
     const path = join(directory, configFilename);
-    writeFileSync(path, JSON.stringify({ ...template, ...changes }, null, 2) + "\n");
+    const document = { ...template, ...changes };
+    // Older fixture cases vary only fresh; omit fixed bands if that age would cross them.
+    if (typeof changes.fresh === "number" && changes.fresh >= template.ageing
+      && !Object.hasOwn(changes, "ageing") && !Object.hasOwn(changes, "buried")) {
+      delete document.ageing;
+      delete document.buried;
+    }
+    writeFileSync(path, JSON.stringify(document, null, 2) + "\n");
     return path;
   }
 

@@ -59,7 +59,8 @@ test("packed CLI installs and resolves its executable offline without developmen
     const configPath = join(userConfigDirectory({ env, homeDirectory: home }), "debt-watcher.config.json");
     const config = JSON.parse(readFileSync(configPath, "utf8"));
     const template = JSON.parse(readFileSync(join(project, "templates", "debt-watcher.config.json"), "utf8"));
-    assert.deepEqual(config, { ...template, fresh: 45, includeFresh: true });
+    const { ageing: _ageing, buried: _buried, ...automatic } = template;
+    assert.deepEqual(config, { ...automatic, fresh: 45, includeFresh: true });
   } finally {
     assert.equal(dirname(resolve(directory)), resolve(tmpdir()));
     assert.ok(basename(directory).startsWith("debt-watcher-package-"));
