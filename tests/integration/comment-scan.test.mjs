@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fixture } from "../helpers/config-fixture.mjs";
 import { selectBranches } from "../../dist/git/branches.js";
+import { runGit } from "../../dist/git/client.js";
 import { scanCommittedComments } from "../../dist/scanners/comments/scan.js";
 
 const builtin = { python: { mode: "builtin" }, ruby: { mode: "builtin" },
@@ -59,5 +60,39 @@ test("scan uses each immutable branch and exposes skipped or unscannable files",
     assert.equal(files.get("broken.css").status, "invalid");
     assert.ok(files.get("unknown.js").diagnostic.message);
   }
+  assert.equal(f.git(repo, ["status", "--porcelain=v1"]), before);
+});
+
+test("marker lines in one block comment retain their own committed authors and dates", async (t) => {
+  const f = fixture(t), repo = f.repository(), context = { cwd: repo, env: f.env };
+  const file = join(repo, "history.js");
+  const commitAs = async (name, email, date, message) => {
+    const env = { ...f.env, GIT_AUTHOR_NAME: name, GIT_AUTHOR_EMAIL: email,
+      GIT_AUTHOR_DATE: date, GIT_COMMITTER_NAME: name, GIT_COMMITTER_EMAIL: email,
+      GIT_COMMITTER_DATE: date };
+    await runGit(["-c", "commit.gpgSign=false", "commit", "--quiet", "-m", message], { cwd: repo, env });
+    return f.git(repo, ["rev-parse", "HEAD"]);
+  };
+  writeFileSync(file, "/* TODO first FIXME first\n * TODO original */\n");
+  f.git(repo, ["add", "history.js"]);
+  const firstCommit = await commitAs("Alex", "alex@example.invalid", "2020-01-02T03:04:05+00:00", "first comment");
+  writeFileSync(file, "/* TODO first FIXME first\n * TODO revised */\n");
+  f.git(repo, ["add", "history.js"]);
+  const secondCommit = await commitAs("Blake", "blake@example.invalid", "2021-02-03T04:05:06+00:00", "edit second line");
+  const branches = await selectBranches(context);
+  writeFileSync(file, "// TODO dirty worktree\n");
+  const before = f.git(repo, ["status", "--porcelain=v1"]);
+  const result = await scanCommittedComments(context, branches, ["TODO", "FIXME"], builtin);
+  const [finding] = result.branches[0].files[0].findings;
+  assert.deepEqual(finding.matches.map(({ marker, line }) => [marker, line]),
+    [["TODO", 1], ["FIXME", 1], ["TODO", 2]]);
+  assert.equal(finding.matches[0].attribution.commitId, firstCommit);
+  assert.equal(finding.matches[0].attribution.authorName, "Alex");
+  assert.equal(finding.matches[0].attribution.authorEmail, "alex@example.invalid");
+  assert.equal(finding.matches[0].attribution.authoredAt, "2020-01-02T03:04:05.000Z");
+  assert.strictEqual(finding.matches[0].attribution, finding.matches[1].attribution);
+  assert.equal(finding.matches[2].attribution.commitId, secondCommit);
+  assert.equal(finding.matches[2].attribution.authorName, "Blake");
+  assert.equal(finding.matches[2].attribution.authoredAt, "2021-02-03T04:05:06.000Z");
   assert.equal(f.git(repo, ["status", "--porcelain=v1"]), before);
 });

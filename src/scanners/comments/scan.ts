@@ -1,6 +1,7 @@
 import { listSourceFiles, readSourceFile, type CommittedSourceFile, type SourceRead } from "../../git/files.js";
 import type { BranchSnapshot } from "../../git/branches.js";
 import type { GitContext } from "../../git/client.js";
+import { blameCommentFindings, type BlamedComment } from "../../git/blame.js";
 import { validateMarkers } from "../../config/validate.js";
 import { extractCComments } from "./c.js";
 import { extractCssComments } from "./css.js";
@@ -9,7 +10,7 @@ import { createGoCommentExtractor, type GoExtractorOptions } from "./go-tool.js"
 import { extractHtmlComments } from "./html.js";
 import { extractJavaScriptComments } from "./javascript.js";
 import type { SourceLanguage } from "./languages.js";
-import { matchCommentMarkers, type MarkedComment } from "./markers.js";
+import { matchCommentMarkers } from "./markers.js";
 import { createPhpCommentExtractor, type PhpExtractorOptions } from "./php-tool.js";
 import { createPythonCommentExtractor, type PythonExtractorOptions } from "./python-tool.js";
 import { createRubyCommentExtractor, type RubyExtractorOptions } from "./ruby-tool.js";
@@ -27,7 +28,7 @@ export type CommentBackend = { kind: "official" | "builtin"; name: string; versi
   executable?: string; reason?: string };
 
 export type ScannedCommentFile =
-  | { file: CommittedSourceFile; status: "ok"; findings: MarkedComment[] }
+  | { file: CommittedSourceFile; status: "ok"; findings: BlamedComment[] }
   | { file: CommittedSourceFile; status: "skipped"; reason: Extract<SourceRead, { kind: "skipped" }>["reason"] }
   | { file: CommittedSourceFile; status: "invalid" | "unsupported";
     diagnostic: { message: string; position: SourcePosition } };
@@ -49,7 +50,7 @@ interface Session {
   close?(): Promise<void>;
 }
 
-/** Read immutable branch snapshots, extract comments, then match markers without inspecting the working tree. */
+/** Read immutable branch snapshots, match comments, and blame each marker line without inspecting the working tree. */
 export async function scanCommittedComments(context: GitContext, branches: readonly BranchSnapshot[],
   markers: readonly string[], options: CommentScanOptions = {}): Promise<CommentScanResult> {
   validateMarkers(markers);
@@ -94,7 +95,10 @@ export async function scanCommittedComments(context: GitContext, branches: reado
         const session = await sessionFor(file.language);
         const extraction = await session.extract(read.text);
         const marked = matchCommentMarkers(extraction, markers);
-        if (marked.status === "ok") files.push({ file, status: "ok", findings: marked.findings });
+        if (marked.status === "ok") {
+          files.push({ file, status: "ok",
+            findings: await blameCommentFindings(context, branch, file, read.text, marked.findings) });
+        }
         else files.push({ file, status: marked.status, diagnostic: marked.diagnostic });
       }
       scanned.push({ branch, files });
