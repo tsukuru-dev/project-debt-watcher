@@ -1,6 +1,6 @@
 # Comment scanner: current implementation
 
-Branch selection, committed source reads, JavaScript/TypeScript, Python, Ruby and Go comment lexers, CSS comment extraction, and official Python/Ruby tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
+Branch selection, committed source reads, JavaScript/TypeScript, Python, Ruby, Go and Rust comment lexers, CSS comment extraction, and official Python/Ruby/Go tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
 
 `selectBranches` snapshots every named local branch by default. Remote scope snapshots existing remote-tracking branches from all remotes, excluding symbolic aliases such as `origin/HEAD`. Tags are excluded. An empty repository returns no branches. Detached HEAD does not add an unnamed branch to the set. Different branches pointing to the same commit remain separate snapshots.
 
@@ -27,7 +27,7 @@ Markers remain plain text such as `TODO` or `FIXME`. The language extractor dete
 | Python | `# ...`, including comments inside f/t-string expressions; literal text and docstrings are not comments | Official tokenizer adapter plus built-in lexer; 168 focused Python tests passed |
 | Ruby | `# ...`, column-one `=begin` / `=end` blocks | Ripper adapter plus limited built-in fallback; real-Ruby verification pending in the current environment |
 | C++ and headers | `// ...`, `/* ... */` | Pending |
-| Rust | `// ...`, `/* ... */`, including nested block comments | Pending |
+| Rust | `// ...`, `/* ... */`, including nested blocks and doc comments | Built-in lexer implemented; new tests unrun |
 | Go | `// ...`, non-nesting `/* ... */` | Official `go/scanner` adapter plus built-in lexer; focused tests passed, real-Go check skipped |
 | CSS | `/* ... */` | Implemented for plain CSS; see scope below |
 | Django / HTML templates | `{# ... #}`, `{% comment %} ... {% endcomment %}`, `<!-- ... -->` | Pending |
@@ -113,5 +113,13 @@ Directives such as `//line`, `//go:build` and `//go:generate`, generated-file no
 The official helper is fixed source from this package. It is compiled once per scan into a temporary directory, with Go's build cache, GOPATH and temporary files pointed there. Network module lookup, toolchain downloads, project workspaces, startup configuration and cgo are disabled for this build. The helper reads committed source as JSON through stdin and calls `go/scanner` with `ScanComments`; it never builds or executes the scanned project. Go's scanner may strip CRs from returned token text and `//line` can alter display positions, so the helper returns byte offsets and Node reconstructs original comment text and UTF-16 positions. Each source is limited to 8 MiB. Helper execution has a 10-second limit and bounded output; compilation has a 120-second limit. The temporary directory is removed on `close()` or when preparation fails.
 
 Errors in source produce diagnostics with no partial comments. Once selected, a helper failure, timeout, invalid response or version change is surfaced rather than silently falling back. No user-facing CLI flags or configuration keys were added. The focused Go and committed-source run passed 64 tests with no failures; its real-Go integration check was skipped because Go was not on PATH. No Go runtime or package was installed. The extractor is not yet wired into reporting.
+
+## Rust extraction
+
+`extractRustComments(source)` recognises line and nested block comments, including `///`, `//!`, `/** ... */` and `/*! ... */` documentation forms. It skips ordinary, byte and C strings; raw strings with up to 255 delimiter hashes; character and byte literals; raw identifiers; and lifetimes. These rules follow the [Rust comments](https://doc.rust-lang.org/reference/comments.html) and [token](https://doc.rust-lang.org/reference/tokens.html) descriptions. Raw comment bodies and UTF-16 positions refer to the original source; LF ends a line and CRLF is preserved in blocks.
+
+The lexer returns `invalid` with no partial comments for unclosed comments or literals, invalid escapes and malformed raw delimiters. Block nesting beyond 128 levels returns `unsupported`. It does not expand macros, execute build scripts or validate a complete Rust program. A `//` or `/*` within a string stays hidden; comments in macro source remain visible as source comments. Rust documentation syntax does not permit a bare CR in a doc comment, so that returns a diagnostic.
+
+This chunk uses the built-in lexer. Rust is not installed in the development environment, and no runtime was installed. Unit and committed-source integration cases have been added but not run at the user's request. The extractor is not yet wired into reporting.
 
 Next chunks will expand fallback syntax support and other language extractors/official adapters, then connect marker matching, blame attribution and report generation. Report integration must expose incomplete coverage and record backend metadata.

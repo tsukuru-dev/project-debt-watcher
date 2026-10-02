@@ -11,6 +11,7 @@ import { extractJavaScriptComments } from "../../dist/scanners/comments/javascri
 import { extractCssComments } from "../../dist/scanners/comments/css.js";
 import { extractPythonComments } from "../../dist/scanners/comments/python.js";
 import { extractGoComments } from "../../dist/scanners/comments/go.js";
+import { extractRustComments } from "../../dist/scanners/comments/rust.js";
 
 function commit(f, repo, content = "// TODO: main\n") {
   writeFileSync(join(repo, "main.ts"), content);
@@ -35,6 +36,26 @@ test("Go extraction uses committed source and treats directives as inert comment
   const result = extractGoComments(saved.text);
   assert.equal(result.status, "ok", JSON.stringify(result));
   assert.deepEqual(result.comments.map((c) => [c.text, c.start.line]), [["go:generate do-not-run", 2], [" TODO committed ", 4]]);
+  assert.equal(f.git(repo, ["status", "--porcelain=v1"]), before);
+  assert.equal(readFileSync(path, "utf8"), "// working copy only\n");
+});
+
+test("Rust extraction reads committed comments without scanning raw strings or dirty source", async (t) => {
+  const f = fixture(t), repo = f.repository(), context = { cwd: repo, env: f.env };
+  const path = join(repo, "main.rs");
+  writeFileSync(path, 'let x = r#"// hidden"#;\n/* TODO committed /* nested */ still here */\n');
+  f.git(repo, ["add", "main.rs"]);
+  f.git(repo, ["commit", "--quiet", "-m", "Rust snapshot"]);
+  const [branch] = await selectBranches(context);
+  writeFileSync(path, "// working copy only\n");
+  const before = f.git(repo, ["status", "--porcelain=v1"]);
+  const [file] = await listSourceFiles(branch.commitId, context);
+  assert.equal(file.language, "rust");
+  const saved = await readSourceFile(file, context);
+  assert.equal(saved.kind, "text");
+  const result = extractRustComments(saved.text);
+  assert.equal(result.status, "ok", JSON.stringify(result));
+  assert.deepEqual(result.comments.map((c) => [c.text, c.start.line]), [[" TODO committed /* nested */ still here ", 2]]);
   assert.equal(f.git(repo, ["status", "--porcelain=v1"]), before);
   assert.equal(readFileSync(path, "utf8"), "// working copy only\n");
 });
