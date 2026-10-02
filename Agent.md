@@ -181,7 +181,7 @@ debt-watcher graveyard --save latest --output "./reports/debt-report.md"
 - Exported reports are user-requested files; saving must not automatically stage, commit, or change Git ignore rules for them.
 
 ## Compatibility
-It should work for the following languages: Python, JS, TS, Node, React, CSS, C/C++, Rust, Go, Django, Ruby, PHP
+It should work for the following languages: Python, JS, TS, Node, React, CSS, C/C++, Rust, Go, Django, HTML, Ruby, PHP
 
 The markers should just be text and not include the // because we should be able to understand what the comment symbols will be based on the languages
 

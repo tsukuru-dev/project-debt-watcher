@@ -1,6 +1,6 @@
 # Comment scanner: current implementation
 
-Branch selection, committed source reads, JavaScript/TypeScript, Python, Ruby, Go and Rust comment lexers, CSS comment extraction, and official Python/Ruby/Go tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
+Branch selection, committed source reads, JavaScript/TypeScript, Python, Ruby, Go and Rust comment lexers, CSS, plain HTML and initial Django template comment extraction, and official Python/Ruby/Go tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
 
 `selectBranches` snapshots every named local branch by default. Remote scope snapshots existing remote-tracking branches from all remotes, excluding symbolic aliases such as `origin/HEAD`. Tags are excluded. An empty repository returns no branches. Detached HEAD does not add an unnamed branch to the set. Different branches pointing to the same commit remain separate snapshots.
 
@@ -30,13 +30,28 @@ Markers remain plain text such as `TODO` or `FIXME`. The language extractor dete
 | Rust | `// ...`, `/* ... */`, including nested blocks and doc comments | Built-in lexer implemented; new tests unrun |
 | Go | `// ...`, non-nesting `/* ... */` | Official `go/scanner` adapter plus built-in lexer; focused tests passed, real-Go check skipped |
 | CSS | `/* ... */` | Implemented for plain CSS; see scope below |
-| Django / HTML templates | `{# ... #}`, `{% comment %} ... {% endcomment %}`, `<!-- ... -->` | Pending |
+| Plain HTML | `<!-- ... -->` | Initial extractor implemented; embedded languages remain pending |
+| Django HTML templates | `{# ... #}`, `{% comment %} ... {% endcomment %}`, `<!-- ... -->` | Initial extractor implemented; see scope below |
 
 Ruby classification includes `.rb`, `.rake`, `.gemspec`, and exact filenames `Gemfile` and `Rakefile`. ERB templates are not covered. The requirements also include C and PHP. Their classification and extraction support remain future chunks; this table does not imply all required languages are implemented.
+
+Plain `.html` and `.htm` files are classified as HTML; `.djhtml` and `.django` are classified as Django templates. A Django template stored as `.html` currently returns `unsupported` when the plain HTML extractor encounters `{#` or `{%`. The Django extractor exists separately, but choosing it for a `.html` file is not yet wired into orchestration.
 
 ## Shared extraction helpers
 
 `source.ts` shares source-position lookup and comment-record construction. Each extractor supplies its newline rules and comment-body boundaries. String, escape and token rules remain language-specific. All extractors return the same `CommentExtraction` type, ready for common marker matching and blame integration later.
+
+`markup.ts` contains the HTML and Django-aware parsing shared by the two template extractors. `html.ts` selects plain HTML behavior; `django.ts` selects Django template behavior.
+
+## Plain HTML extraction
+
+`extractHtmlComments(source)` extracts `<!-- ... -->` comments from plain HTML while preserving original text and UTF-16 positions. It skips quoted tag attributes and text-only elements such as `<title>` and `<textarea>`, where a comment-looking sequence is text. Unterminated comments or tags return `invalid` with no partial comments. Embedded `<script>`, `<style>` and `<noscript>` content, Django delimiters, PHP processing tags, and unsupported declarations return `unsupported` with no partial comments. These areas require separate language handling; this extractor does not claim to scan them. It does not render or execute HTML or templates, and it is not yet wired into reports.
+
+## Django template extraction
+
+`extractDjangoTemplateComments(source)` uses the same HTML context rules and also recognises single-line `{# ... #}` comments and `{% comment %} ... {% endcomment %}` blocks. It skips ordinary `{% ... %}` and `{{ ... }}` tokens, including those inside HTML attributes, so their contents cannot be mistaken for HTML syntax. Template and HTML comments retain original source positions and are returned in source order. Content inside a Django comment block is one comment, even if it contains broken template tags, other comment-looking text or HTML comment delimiters.
+
+This first chunk rejects multiline `{# ... #}` comments, nested or unmatched `{% comment %}` tags, and opening comment tags with an optional note. The latter is valid Django syntax but is `unsupported` until its note can be represented without dropping markers. Django tokens inside raw-text HTML elements and embedded `<script>`/`<style>` content are also `unsupported`; malformed tokens are `invalid`. Failures return no partial comments. No Django package is imported, no template is rendered, and this extractor is not yet wired into reports.
 
 ## JavaScript and TypeScript extraction
 
