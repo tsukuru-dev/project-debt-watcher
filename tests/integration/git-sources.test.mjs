@@ -199,7 +199,7 @@ test("source extension classification covers required language families without 
   const cases = { "a.py": "python", "a.pyi": "python", "a.cjs": "javascript", "a.mjs": "javascript",
     "a.jsx": "jsx", "a.mts": "typescript", "a.cts": "typescript", "a.tsx": "tsx", "a.css": "css",
     "a.cpp": "cpp", "a.hpp": "cpp", "a.C": "cpp", "a.rs": "rust", "a.go": "go",
-    "templates/a.html": "html", "a.djhtml": "django-template" };
+    "templates/a.html": "html", "a.djhtml": "django-template", "a.php": "php", "view.phtml": "php" };
   for (const [path, language] of Object.entries(cases)) assert.equal(languageForPath(path), language, path);
   for (const path of ["README.md", "package.json", "image.png", "no-extension"]) assert.equal(languageForPath(path), undefined);
 });

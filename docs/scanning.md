@@ -1,6 +1,6 @@
 # Comment scanner: current implementation
 
-Branch selection, committed source reads, JavaScript/TypeScript, Python, Ruby, Go and Rust comment lexers, CSS, plain HTML and initial Django template comment extraction, and official Python/Ruby/Go tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
+Branch selection, committed source reads, JavaScript/TypeScript, Python, Ruby, Go, Rust and initial PHP comment lexers, CSS, plain HTML and initial Django template comment extraction, and official Python/Ruby/Go/PHP tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
 
 `selectBranches` snapshots every named local branch by default. Remote scope snapshots existing remote-tracking branches from all remotes, excluding symbolic aliases such as `origin/HEAD`. Tags are excluded. An empty repository returns no branches. Detached HEAD does not add an unnamed branch to the set. Different branches pointing to the same commit remain separate snapshots.
 
@@ -32,8 +32,9 @@ Markers remain plain text such as `TODO` or `FIXME`. The language extractor dete
 | CSS | `/* ... */` | Implemented for plain CSS; see scope below |
 | Plain HTML | `<!-- ... -->` | Initial extractor implemented; embedded languages remain pending |
 | Django HTML templates | `{# ... #}`, `{% comment %} ... {% endcomment %}`, `<!-- ... -->` | Initial extractor implemented; see scope below |
+| PHP with HTML | PHP `// ...`, `# ...`, `/* ... */`; HTML `<!-- ... -->` outside PHP tags | Official `token_get_all()` adapter plus limited built-in fallback; real-PHP check pending |
 
-Ruby classification includes `.rb`, `.rake`, `.gemspec`, and exact filenames `Gemfile` and `Rakefile`. ERB templates are not covered. The requirements also include C and PHP. Their classification and extraction support remain future chunks; this table does not imply all required languages are implemented.
+Ruby classification includes `.rb`, `.rake`, `.gemspec`, and exact filenames `Gemfile` and `Rakefile`. ERB templates are not covered. PHP classification includes `.php` and `.phtml`. C classification and extraction remain a future chunk; this table does not imply all required languages are implemented.
 
 Plain `.html` and `.htm` files are classified as HTML; `.djhtml` and `.django` are classified as Django templates. A Django template stored as `.html` currently returns `unsupported` when the plain HTML extractor encounters `{#` or `{%`. The Django extractor exists separately, but choosing it for a `.html` file is not yet wired into orchestration.
 
@@ -52,6 +53,20 @@ Plain `.html` and `.htm` files are classified as HTML; `.djhtml` and `.django` a
 `extractDjangoTemplateComments(source)` uses the same HTML context rules and also recognises single-line `{# ... #}` comments and `{% comment %} ... {% endcomment %}` blocks. It skips ordinary `{% ... %}` and `{{ ... }}` tokens, including those inside HTML attributes, so their contents cannot be mistaken for HTML syntax. Template and HTML comments retain original source positions and are returned in source order. Content inside a Django comment block is one comment, even if it contains broken template tags, other comment-looking text or HTML comment delimiters.
 
 This first chunk rejects multiline `{# ... #}` comments, nested or unmatched `{% comment %}` tags, and opening comment tags with an optional note. The latter is valid Django syntax but is `unsupported` until its note can be represented without dropping markers. Django tokens inside raw-text HTML elements and embedded `<script>`/`<style>` content are also `unsupported`; malformed tokens are `invalid`. Failures return no partial comments. No Django package is imported, no template is rendered, and this extractor is not yet wired into reports.
+
+## PHP fallback extraction
+
+`extractPhpComments(source)` recognises `<?php ... ?>` and `<?= ... ?>` regions without running the code. Inside PHP it extracts `//`, `#`, and non-nesting `/* ... */` comments, skips quoted strings, and treats PHP 8 `#[...]` attributes as code rather than hash comments. PHP line comments end at a newline or at `?>`, whichever comes first. Outside PHP, it delegates to the plain HTML extractor. Original text and positions are preserved across PHP and HTML regions, and comments are returned in source order. A PHP region overlapping an HTML comment is `unsupported` until mixed-language overlap semantics are defined.
+
+This is a deliberately bounded fallback. Short `<?` tags depend on PHP settings and are `unsupported`, as are heredoc, nowdoc, backticks, complex string interpolation, and HTML scripts or styles. Unterminated strings and block comments are `invalid`. All failure results have no partial comments. The extractor is not yet wired into reports.
+
+### Official PHP tokenizer
+
+`createPhpCommentExtractor(options)` selects an existing compatible PHP CLI before the fallback. The fixed helper passes source text to PHP's [token_get_all()](https://www.php.net/manual/en/function.token-get-all.php) with `TOKEN_PARSE`; scanned source is never executed. `T_COMMENT` and `T_DOC_COMMENT` identify PHP comments, while `T_INLINE_HTML` identifies regions outside PHP tags. The adapter maps UTF-8 byte spans back to the original UTF-16 offsets and passes inline regions to the HTML extractor. HTML comments spanning PHP regions return `unsupported` rather than partial results. PHP parse errors return `invalid` with no partial comments.
+
+Automatic selection checks existing `php` executables (`php.exe` on Windows) in absolute PATH directories, skipping relative paths and Windows Store aliases. It accepts stable PHP 8.x only after a capability probe checks mixed HTML, line/block comments and a nowdoc. Internal `mode: "auto"`, `"official"`, or `"builtin"` and an absolute `executable` path mirror the other language adapters; these are not CLI flags yet. Unavailable or incompatible PHP selects the labelled fallback in auto mode. A failure after official selection does not silently switch backends.
+
+The helper runs through PHP CLI `-n -r` without loading `php.ini`, from the interpreter's directory and without a shell. PHP environment overrides are removed. The scanned project is never included, built or run. Input is limited to 8 MiB; each helper has a 10-second timeout and 32 MiB output limit. PHP is not on PATH in the current development environment, so real-interpreter verification is pending; mock and optional real-PHP tests have been added but not run at the user's request. No PHP installation or npm dependency was added.
 
 ## JavaScript and TypeScript extraction
 
