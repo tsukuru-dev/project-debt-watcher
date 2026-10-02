@@ -10,6 +10,7 @@ import { languageForPath } from "../../dist/scanners/comments/languages.js";
 import { extractJavaScriptComments } from "../../dist/scanners/comments/javascript.js";
 import { extractCssComments } from "../../dist/scanners/comments/css.js";
 import { extractPythonComments } from "../../dist/scanners/comments/python.js";
+import { extractGoComments } from "../../dist/scanners/comments/go.js";
 
 function commit(f, repo, content = "// TODO: main\n") {
   writeFileSync(join(repo, "main.ts"), content);
@@ -17,6 +18,26 @@ function commit(f, repo, content = "// TODO: main\n") {
   f.git(repo, ["commit", "--quiet", "-m", "source snapshot"]);
   return f.git(repo, ["rev-parse", "HEAD"]);
 }
+
+test("Go extraction uses committed source and treats directives as inert comments", async (t) => {
+  const f = fixture(t), repo = f.repository(), context = { cwd: repo, env: f.env };
+  const path = join(repo, "main.go");
+  writeFileSync(path, 'package main\n//go:generate do-not-run\nvar s = `// hidden`\n/* TODO committed */\n');
+  f.git(repo, ["add", "main.go"]);
+  f.git(repo, ["commit", "--quiet", "-m", "Go snapshot"]);
+  const [branch] = await selectBranches(context);
+  writeFileSync(path, "// working copy only\n");
+  const before = f.git(repo, ["status", "--porcelain=v1"]);
+  const [file] = await listSourceFiles(branch.commitId, context);
+  assert.equal(file.language, "go");
+  const saved = await readSourceFile(file, context);
+  assert.equal(saved.kind, "text");
+  const result = extractGoComments(saved.text);
+  assert.equal(result.status, "ok", JSON.stringify(result));
+  assert.deepEqual(result.comments.map((c) => [c.text, c.start.line]), [["go:generate do-not-run", 2], [" TODO committed ", 4]]);
+  assert.equal(f.git(repo, ["status", "--porcelain=v1"]), before);
+  assert.equal(readFileSync(path, "utf8"), "// working copy only\n");
+});
 
 // Build Git trees directly so Windows can test names it cannot create on disk.
 async function treeCommit(context, entries) {

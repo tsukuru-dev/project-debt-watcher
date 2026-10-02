@@ -1,6 +1,6 @@
 # Comment scanner: current implementation
 
-Branch selection, committed source reads, JavaScript/TypeScript, Python and Ruby comment lexers, CSS comment extraction, and official Python/Ruby tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
+Branch selection, committed source reads, JavaScript/TypeScript, Python, Ruby and Go comment lexers, CSS comment extraction, and official Python/Ruby tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
 
 `selectBranches` snapshots every named local branch by default. Remote scope snapshots existing remote-tracking branches from all remotes, excluding symbolic aliases such as `origin/HEAD`. Tags are excluded. An empty repository returns no branches. Detached HEAD does not add an unnamed branch to the set. Different branches pointing to the same commit remain separate snapshots.
 
@@ -24,11 +24,11 @@ Markers remain plain text such as `TODO` or `FIXME`. The language extractor dete
 | --- | --- | --- |
 | JavaScript / TypeScript / Node | `// ...`, `/* ... */`, including JSDoc | Initial lexer implemented, with limitations below |
 | JSX / TSX / React | JS comments in expressions, including `{/* ... */}`; plain JSX text is not a comment | Pending |
-| Python | `# ...`, including comments inside f/t-string expressions; literal text and docstrings are not comments | Official tokenizer adapter plus built-in lexer; expanded interpolation checks await execution |
+| Python | `# ...`, including comments inside f/t-string expressions; literal text and docstrings are not comments | Official tokenizer adapter plus built-in lexer; 168 focused Python tests passed |
 | Ruby | `# ...`, column-one `=begin` / `=end` blocks | Ripper adapter plus limited built-in fallback; real-Ruby verification pending in the current environment |
 | C++ and headers | `// ...`, `/* ... */` | Pending |
 | Rust | `// ...`, `/* ... */`, including nested block comments | Pending |
-| Go | `// ...`, `/* ... */` | Pending |
+| Go | `// ...`, non-nesting `/* ... */` | Official `go/scanner` adapter plus built-in lexer; focused tests passed, real-Go check skipped |
 | CSS | `/* ... */` | Implemented for plain CSS; see scope below |
 | Django / HTML templates | `{# ... #}`, `{% comment %} ... {% endcomment %}`, `<!-- ... -->` | Pending |
 
@@ -78,7 +78,7 @@ Unterminated strings/fields, mismatched expression brackets, empty fields, inval
 
 This lexer does not validate indentation, the full expression grammar, Unicode character names, all escape values or bytes-literal contents. It targets modern Python 3 lexical syntax rather than enforcing the grammar of a particular installed interpreter; for example, the fallback accepts t-strings even where the selected official Python 3.12/3.13 backend would reject them. Neither path executes scanned source. The official adapter still performs full syntax validation with `ast.parse`.
 
-New fallback cases cover interpolation boundaries, positions, malformed input and nesting limits, with a shared corpus for comparisons against an available official Python installation. These new checks have been written but not run, at the user's request; the expanded Python implementation must not yet be described as verified complete. Marker matching, blame and report integration remain separate pending work.
+Fallback cases cover interpolation boundaries, positions, malformed input and nesting limits, with a shared corpus for comparisons against an available official Python installation. All 168 focused Python tests passed, with no skipped checks, including the new comparisons against official Python. The TypeScript build also passed during that run. Marker matching, blame and report integration remain separate pending work.
 
 ## Ruby extraction
 
@@ -99,5 +99,19 @@ Both backends reject non-UTF-8 encoding declarations, bare CR line endings and s
 The fallback deliberately rejects interpolation in double-quoted strings, control/meta escapes, regex/percent literals, heredocs, character literals, backticks and special global-variable syntax. Conservative token checks also reject division, modulo, shifts and method names containing `?`. Unsupported or malformed input returns a diagnostic and no partial comments; this is not a complete Ruby grammar validator.
 
 Fallback, mocked adapter and committed-source tests run without Ruby. Integration tests additionally exercise a real Ripper installation when available, including checks that scanned statements and Ruby startup hooks are not executed. Those real-Ruby checks are skipped in the current development environment because Ruby is not on PATH; compatibility across the accepted Ruby versions remains to be verified on machines providing them.
+
+## Go extraction
+
+`extractGoComments(source)` is the built-in Go comment lexer. It recognises `//` and non-nesting `/* ... */` comments, skipping interpreted strings, backtick raw strings and rune literals. It validates literal escape lengths/ranges and single-rune contents, including Unicode code points. The lexical rules are based on the [Go specification](https://go.dev/ref/spec#Comments).
+
+Original UTF-16 offsets and text are retained. LF increments the line number; bare CR remains part of the same physical line. A line comment excludes its CRLF terminator, but internal CRs and block-comment line endings remain unchanged. A leading BOM is preserved in offsets; embedded BOMs, NULs and unpaired surrogates return invalid-source diagnostics. Unterminated comments/literals and malformed escapes return no partial comments.
+
+Directives such as `//line`, `//go:build` and `//go:generate`, generated-file notices and cgo preambles remain inert comment text. They do not remap positions, filter files or execute commands. This is a comment lexer, not a full grammar or numeric-literal validator.
+
+`createGoCommentExtractor(options)` now selects the official [go/scanner](https://pkg.go.dev/go/scanner) adapter when a compatible existing `go` executable is found. Internal options are `mode: "auto"` (default), `"official"`, or `"builtin"`, and an optional absolute `executable` path. Go versions 1.20-1.27 pass only after a capability probe checks Unicode/BOM positions, CRLF, block comments, strings and `//line` directives. In auto mode, missing or incompatible Go tools select the built-in fallback with a recorded reason. The selector exposes `backend`, `extract(source)` and `close()`; callers must await `close()` after all extraction finishes.
+
+The official helper is fixed source from this package. It is compiled once per scan into a temporary directory, with Go's build cache, GOPATH and temporary files pointed there. Network module lookup, toolchain downloads, project workspaces, startup configuration and cgo are disabled for this build. The helper reads committed source as JSON through stdin and calls `go/scanner` with `ScanComments`; it never builds or executes the scanned project. Go's scanner may strip CRs from returned token text and `//line` can alter display positions, so the helper returns byte offsets and Node reconstructs original comment text and UTF-16 positions. Each source is limited to 8 MiB. Helper execution has a 10-second limit and bounded output; compilation has a 120-second limit. The temporary directory is removed on `close()` or when preparation fails.
+
+Errors in source produce diagnostics with no partial comments. Once selected, a helper failure, timeout, invalid response or version change is surfaced rather than silently falling back. No user-facing CLI flags or configuration keys were added. The focused Go and committed-source run passed 64 tests with no failures; its real-Go integration check was skipped because Go was not on PATH. No Go runtime or package was installed. The extractor is not yet wired into reporting.
 
 Next chunks will expand fallback syntax support and other language extractors/official adapters, then connect marker matching, blame attribution and report generation. Report integration must expose incomplete coverage and record backend metadata.
