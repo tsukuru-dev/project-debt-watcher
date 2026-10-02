@@ -1,6 +1,6 @@
 # Comment scanner: current implementation
 
-Branch selection, committed source reads, initial extractors for every listed language family, and official Python/Ruby/Go/PHP tool adapters are implemented, with the scope and limitations below. Marker matching, blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
+Branch selection, committed source reads, initial extractors for every listed language family, official Python/Ruby/Go/PHP tool adapters, marker matching, and a committed-source scan pipeline are implemented, with the scope and limitations below. Blame and report integration remain pending. The `graveyard` command still reports that generation is pending.
 
 `selectBranches` snapshots every named local branch by default. Remote scope snapshots existing remote-tracking branches from all remotes, excluding symbolic aliases such as `origin/HEAD`. Tags are excluded. An empty repository returns no branches. Detached HEAD does not add an unnamed branch to the set. Different branches pointing to the same commit remain separate snapshots.
 
@@ -40,7 +40,11 @@ Plain `.html` and `.htm` files are classified as HTML; `.djhtml` and `.django` a
 
 ## Shared extraction helpers
 
-`source.ts` shares source-position lookup and comment-record construction. Each extractor supplies its newline rules and comment-body boundaries. String, escape and token rules remain language-specific. All extractors return the same `CommentExtraction` type, ready for common marker matching and blame integration later.
+`source.ts` shares source-position lookup and comment-record construction. Each extractor supplies its newline rules and comment-body boundaries. String, escape and token rules remain language-specific. All extractors return the same `CommentExtraction` type, which the marker matcher accepts. Blame integration comes later.
+
+`matchCommentMarkers(extraction, markers)` in `markers.ts` checks only comment bodies returned by an extractor. Configured markers are literal and case-sensitive; a match touching a letter, number or underscore on either side is excluded when that edge of the marker is a word character. Internal spaces and punctuation are preserved. Longer overlapping markers take precedence, then configuration order. One comment becomes one finding even if it contains several matches, with each accepted marker occurrence retaining its original UTF-16 source offsets. An empty marker list yields no findings. Invalid or unsupported extraction passes through its diagnostic with no partial findings.
+
+`scanCommittedComments(context, branches, markers, options)` in `scan.ts` joins branch snapshots, committed source reads, language selection and marker matching. It creates each required extractor once per scan, prefers a compatible existing official tool where an adapter exists, records the selected backend, and closes the Go helper on completion or failure. Built-in mode can be selected per official-tool language for reproducible checks. Every candidate file produces an `ok` result with its flagged comments, a `skipped` reason for unreadable source, or an `invalid`/`unsupported` diagnostic. Only committed blobs are read; a dirty working tree is untouched. Integration tests cover all listed language families and multiple branch snapshots. The pipeline is not yet called by `graveyard`.
 
 `markup.ts` contains the HTML and Django-aware parsing shared by the two template extractors. `html.ts` selects plain HTML behavior; `django.ts` selects Django template behavior.
 
@@ -118,7 +122,7 @@ Unterminated strings/fields, mismatched expression brackets, empty fields, inval
 
 This lexer does not validate indentation, the full expression grammar, Unicode character names, all escape values or bytes-literal contents. It targets modern Python 3 lexical syntax rather than enforcing the grammar of a particular installed interpreter; for example, the fallback accepts t-strings even where the selected official Python 3.12/3.13 backend would reject them. Neither path executes scanned source. The official adapter still performs full syntax validation with `ast.parse`.
 
-Fallback cases cover interpolation boundaries, positions, malformed input and nesting limits, with a shared corpus for comparisons against an available official Python installation. All 168 focused Python tests passed, with no skipped checks, including the new comparisons against official Python. The TypeScript build also passed during that run. Marker matching, blame and report integration remain separate pending work.
+Fallback cases cover interpolation boundaries, positions, malformed input and nesting limits, with a shared corpus for comparisons against an available official Python installation. All 168 focused Python tests passed, with no skipped checks, including the new comparisons against official Python. The TypeScript build also passed during that run. Blame and report integration remain separate pending work.
 
 ## Ruby extraction
 
@@ -162,4 +166,4 @@ The lexer returns `invalid` with no partial comments for unclosed comments or li
 
 This chunk uses the built-in lexer. Rust is not installed in the development environment, and no runtime was installed. Unit and committed-source integration cases have been added but not run at the user's request. The extractor is not yet wired into reporting.
 
-Next chunks will expand fallback syntax support and other language extractors/official adapters, then connect marker matching, blame attribution and report generation. Report integration must expose incomplete coverage and record backend metadata.
+Next chunks will add blame attribution and report generation on top of the committed-source scan. Report integration must expose incomplete coverage and record backend metadata.
