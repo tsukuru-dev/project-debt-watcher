@@ -2,7 +2,7 @@
 
 Command routing, help, configuration loading/validation, listing, editing, copying, and editor opening are implemented. The full command and validation requirements live in `../Agent.md`.
 
-- `debt-watcher graveyard`: checks repository configuration, offers confirmed team setup/repair during interactive use, then passes report options and saved configuration to the report handler. The scanner is still pending.
+- `debt-watcher graveyard`: checks repository configuration, offers confirmed team setup/repair during interactive use, then passes report options and saved configuration to the report handler. The committed-source scanner and code-only terminal renderer exist, but are not yet connected to this command.
 - `debt-watcher config --list`: displays the active configuration and its file path; `--list markers` displays the configured markers. Existing personal defaults can be listed with `--global config --list`.
 - `debt-watcher config --set key=value`: saves one or more settings after validating the complete result.
 - `debt-watcher config --add markers="TO DO,FIXME"` / `--remove markers="HACK"`: updates the marker list without replacing the other entries.
