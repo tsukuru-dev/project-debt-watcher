@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { test } from "node:test";
 import { runCli } from "../../dist/program.js";
@@ -60,13 +60,40 @@ test("graveyard reports committed code across local or remote refs with temporar
   assert.match(remote.stdout, /origin\/main:legacy\.js:1/);
   assert.equal(readFileSync(configPath, "utf8"), beforeConfig);
   assert.equal(f.git(repo, ["status", "--porcelain=v1"]), beforeStatus);
+
+  const destination = join(f.root, "saved.md");
+  const saved = await invoke(["--save", "--repo", relative(f.root, repo),
+    "--output", "./saved.md", "--filter", "includefresh=true"], f.root);
+  assert.equal(saved.status, 0, saved.stderr);
+  assert.match(saved.stdout, /Saved report:/);
+  const markdown = readFileSync(destination, "utf8");
+  assert.match(markdown, /# Graveyard — code comments/);
+  assert.match(markdown, /Code comments: 2/);
+  assert.match(markdown, /replace legacy route/);
+  assert.match(markdown, /recent cleanup/);
+  assert.ok(!markdown.includes("dirty working-tree text"));
+  assert.ok(!markdown.includes("\u001b"));
+  const repeat = await invoke(["--save", "--repo", relative(f.root, repo), "--output", "./saved.md"], f.root);
+  assert.equal(repeat.status, 1);
+  assert.match(repeat.stderr, /Report already exists/);
+  assert.equal(readFileSync(destination, "utf8"), markdown);
+
+  const missing = await invoke(["--save"]);
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /Report directory does not exist/);
+  assert.ok(!existsSync(join(repo, "debt-watcher-reports")));
+  mkdirSync(join(repo, "debt-watcher-reports"));
+  const configured = await invoke(["--save"]);
+  assert.equal(configured.status, 0, configured.stderr);
+  assert.match(configured.stdout, /Saved report:/);
+  assert.equal(readFileSync(configPath, "utf8"), beforeConfig);
 });
 
 test("unsupported report modes fail before repository setup or scanning", async (t) => {
   const f = fixture(t);
   for (const [args, message] of [
     [["--summary"], /summaries are not implemented/],
-    [["--save"], /Saving reports is not implemented/],
+    [["--save", "latest"], /latest report is not implemented/],
     [["--filter", "type=branches"], /Only type=code is available/],
   ]) {
     let stderr = "";
