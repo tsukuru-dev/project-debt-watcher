@@ -1,5 +1,6 @@
 import type { AgeCategory } from "../ages.js";
 import type { CodeFinding, CodeReportView, UnscannedFile } from "../types.js";
+import type { TypeSummary } from "../summaries.js";
 
 export interface TerminalReportOptions {
   /** The caller supplies a URL for the exact committed source. Omit when unavailable. */
@@ -74,5 +75,18 @@ export function renderCodeReportTerminal(view: CodeReportView, options: Terminal
       lines.push(`- ${plain(file.branch.name)}:${plain(file.file.path)} — ${unscannedReason(file)}`);
     }
   }
+  return lines.join("\n") + "\n";
+}
+
+/** Compact type counts for the same filtered findings; no individual rows. */
+export function renderTypeSummaryTerminal(summary: TypeSummary): string {
+  const lines = ["Graveyard — summary by type", `Generated: ${summary.generatedAt}`,
+    `Scanned branches: ${summary.branchCount}`, `Total debt: ${summary.counts.total}`,
+    `Code comments: ${summary.counts.code}`,
+    `Fresh ${summary.counts.categories.fresh} | Ageing ${summary.counts.categories.ageing}`
+      + ` | Buried ${summary.counts.categories.buried} | Fossil ${summary.counts.categories.fossil}`,
+    summary.oldest ? `Oldest: code comment | ${summary.oldest.ageDays} days | ${location(summary.oldest)}`
+      : "Oldest: none"];
+  if (summary.unscannedCount) lines.push(`Unscanned files: ${summary.unscannedCount}; debt in these files is unknown.`);
   return lines.join("\n") + "\n";
 }

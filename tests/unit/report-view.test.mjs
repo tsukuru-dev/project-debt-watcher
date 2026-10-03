@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { buildCodeReportView } from "../../dist/reports/filters.js";
+import { buildTypeSummary } from "../../dist/reports/summaries.js";
+import { renderTypeSummaryTerminal } from "../../dist/reports/render/terminal.js";
 
 const settings = JSON.parse(readFileSync(new URL("../../templates/debt-watcher.config.json", import.meta.url), "utf8"));
 const position = { offset: 0, line: 1, column: 1 };
@@ -73,4 +75,22 @@ test("unimplemented debt types are rejected rather than silently omitted", () =>
     assert.throws(() => buildCodeReportView(snapshot, { filter: { type } }), /Only type=code/);
   }
   assert.throws(() => buildCodeReportView(snapshot, { filter: { author: " " } }), /must not be empty/);
+});
+
+test("type summary uses the filtered counts and oldest item without detailed rows", () => {
+  const view = buildCodeReportView(snapshot, { order: "newold", filter: { author: "Alex" } });
+  const summary = buildTypeSummary(view);
+  assert.equal(summary.counts.total, 2);
+  assert.equal(summary.counts.code, 2);
+  assert.equal(summary.oldest, older);
+  assert.equal(summary.unscannedCount, 1);
+  const printed = renderTypeSummaryTerminal(summary);
+  assert.match(printed, /Code comments: 2/);
+  assert.match(printed, /Unscanned files: 1/);
+  assert.ok(!printed.includes("src/c.js"));
+  assert.ok(!printed.includes("Alex Smith"));
+  const empty = buildTypeSummary(buildCodeReportView(snapshot, { filter: { author: "Nobody" } }));
+  assert.equal(empty.counts.total, 0);
+  assert.equal(empty.oldest, undefined);
+  assert.match(renderTypeSummaryTerminal(empty), /Oldest: none/);
 });

@@ -42,6 +42,27 @@ test("graveyard reports committed code across local or remote refs with temporar
   assert.equal(firstLatest.status, 0, firstLatest.stderr);
   assert.match(readFileSync(join(f.root, "first-latest.md"), "utf8"), /Code comments: 1/);
 
+  const summary = await invoke(["--summary"]);
+  assert.equal(summary.status, 0, summary.stderr);
+  assert.match(summary.stdout, /Graveyard — summary by type/);
+  assert.match(summary.stdout, /Total debt: 1/);
+  assert.match(summary.stdout, /Oldest: code comment \| \d+ days \| main:legacy\.js:1/);
+  assert.ok(!summary.stdout.includes("replace legacy route"));
+  const filteredSummary = await invoke(["--summary", "types", "--filter", "includefresh=true"]);
+  assert.equal(filteredSummary.status, 0, filteredSummary.stderr);
+  assert.match(filteredSummary.stdout, /Code comments: 2/);
+  const savedSummary = await invoke(["--summary", "--save", "--output", "./summary.md",
+    "--repo", relative(f.root, repo)], f.root);
+  assert.equal(savedSummary.status, 0, savedSummary.stderr);
+  const summaryMarkdown = readFileSync(join(f.root, "summary.md"), "utf8");
+  assert.match(summaryMarkdown, /# Graveyard — summary by type/);
+  assert.match(summaryMarkdown, /Total debt: 1/);
+  assert.ok(!summaryMarkdown.includes("replace legacy route"));
+  const latestSummary = await invoke(["--save", "latest", "--output", "./summary-copy.md",
+    "--repo", relative(f.root, repo)], f.root);
+  assert.equal(latestSummary.status, 0, latestSummary.stderr);
+  assert.equal(readFileSync(join(f.root, "summary-copy.md"), "utf8"), summaryMarkdown);
+
   const included = await invoke(["--filter", "includefresh=true", "--order", "newold"]);
   assert.equal(included.status, 0, included.stderr);
   assert.match(included.stdout, /Code comments \(2\)/);
@@ -119,7 +140,7 @@ test("graveyard reports committed code across local or remote refs with temporar
 test("unsupported report modes fail before repository setup or scanning", async (t) => {
   const f = fixture(t);
   for (const [args, message] of [
-    [["--summary"], /summaries are not implemented/],
+    [["--summary", "blame"], /Author summaries are not implemented/],
     [["--filter", "type=branches"], /Only type=code is available/],
   ]) {
     let stderr = "";

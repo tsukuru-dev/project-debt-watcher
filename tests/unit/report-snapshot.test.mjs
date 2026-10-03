@@ -15,7 +15,7 @@ test("report snapshots survive separate reads and stay isolated by repository", 
     XDG_CONFIG_HOME: join(root, "config") } };
   const repositoryRoot = join(root, "repo-a");
   const snapshot = { version: 1, repositoryRoot, generatedAt: "2026-01-01T00:00:00.000Z",
-    checkoutBranch: "main", checkoutCommit: "a".repeat(40), scope: "local",
+    checkoutBranch: "main", checkoutCommit: "a".repeat(40), scope: "local", mode: "detailed",
     scannedBranches: [{ ref: "refs/heads/main", commitId: "a".repeat(40) }],
     settings: { fresh: 30, ageing: 60, buried: 90, markers: ["TODO"], includeFresh: false,
       showAuthors: true, order: "oldnew", reportDirectory: "./reports" },
@@ -26,6 +26,8 @@ test("report snapshots survive separate reads and stay isolated by repository", 
   assert.equal(await latestReport(join(root, "repo-b"), options), null);
   await rememberReport({ ...snapshot, markdown: "# New report\n" }, options);
   assert.equal((await latestReport(repositoryRoot, options)).markdown, "# New report\n");
+  writeFileSync(reportSnapshotPath(repositoryRoot, options), JSON.stringify({ ...snapshot, mode: undefined }));
+  assert.equal((await latestReport(repositoryRoot, options)).mode, "detailed");
   writeFileSync(reportSnapshotPath(repositoryRoot, options), "bad JSON");
   await assert.rejects(latestReport(repositoryRoot, options), /Report cache is invalid/);
 });

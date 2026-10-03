@@ -97,10 +97,10 @@ function createProgram(options: CliOptions): Command {
     })
     .showHelpAfterError("Run 'debt-watcher --help' for usage.")
     .exitOverride()
-    .addHelpText("after", "\nCode-comment reports, Markdown saves and latest exports are available. Summaries are pending.");
+    .addHelpText("after", "\nCode-comment reports, type summaries, Markdown saves and latest exports are available. Author summaries are pending.");
 
   program.command("graveyard")
-    .description("Show or save a code-comment report (summaries pending)")
+    .description("Show or save a code-comment report or type summary")
     .addOption(new Option("--summary [mode]", "Summarise by types (default) or blame")
       .choices(["types", "blame"]).preset("types"))
     .addOption(new Option("--save [mode]", "Save a new report, or export the latest snapshot")
@@ -121,9 +121,10 @@ function createProgram(options: CliOptions): Command {
       "  debt-watcher graveyard --filter includefresh=true --order newold",
       "  debt-watcher graveyard --remote --all --filter type=code",
       "  debt-watcher graveyard --save --output ./report.md",
+      "  debt-watcher graveyard --summary --save --output ./summary.md",
       "  debt-watcher graveyard --save latest --output ./copy.md",
       "",
-      "Summaries are planned but not yet available.",
+      "Author summaries (--summary blame) are planned but not yet available.",
     ].join("\n"))
     .action(async (_localOptions, command: Command) => {
       const values = command.optsWithGlobals<GraveyardArguments>();

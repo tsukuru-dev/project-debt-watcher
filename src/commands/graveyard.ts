@@ -4,8 +4,9 @@ import { selectBranches } from "../git/branches.js";
 import { scanCommittedComments } from "../scanners/comments/scan.js";
 import { buildCodeFindings } from "../reports/build.js";
 import { buildCodeReportView } from "../reports/filters.js";
-import { renderCodeReportTerminal } from "../reports/render/terminal.js";
-import { renderCodeReportMarkdown } from "../reports/render/markdown.js";
+import { renderCodeReportTerminal, renderTypeSummaryTerminal } from "../reports/render/terminal.js";
+import { renderCodeReportMarkdown, renderTypeSummaryMarkdown } from "../reports/render/markdown.js";
+import { buildTypeSummary } from "../reports/summaries.js";
 import { resolveReportSettings } from "../reports/settings.js";
 import { saveMarkdownReport } from "../storage/exports.js";
 import { latestReport, rememberReport } from "../storage/snapshots.js";
@@ -27,7 +28,7 @@ export interface GraveyardContext {
 
 /** Reject unavailable views before interactive setup or an expensive source scan. */
 export function assertCodeReportOptions(options: GraveyardArguments): void {
-  if (options.summary !== undefined) throw new Error("Report summaries are not implemented yet. Run graveyard without --summary.");
+  if (options.summary === "blame") throw new Error("Author summaries are not implemented yet. Use --summary for type counts.");
   if (options.filter?.type?.some((type) => type !== "code")) {
     throw new Error("Only type=code is available until branch and issue scanning are implemented.");
   }
@@ -86,18 +87,22 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
     ...(options.filter === undefined ? {} : { filter: options.filter }),
     ...(options.order === undefined ? {} : { order: options.order }),
   });
+  const summary = options.summary === "types" ? buildTypeSummary(view) : undefined;
   const checkoutBranch = await runGit(["symbolic-ref", "--quiet", "--short", "HEAD"], git)
     .then((name) => name.trim(), () => null);
   const checkoutCommit = await runGit(["rev-parse", "--verify", "HEAD"], git)
     .then((commit) => commit.trim(), () => null);
-  const markdown = renderCodeReportMarkdown(view, { checkoutBranch, checkoutCommit,
-    scope: options.remote ? "remote" : "local" });
+  const reportContext = { checkoutBranch, checkoutCommit,
+    scope: options.remote ? "remote" as const : "local" as const };
+  const markdown = summary ? renderTypeSummaryMarkdown(summary, reportContext)
+    : renderCodeReportMarkdown(view, reportContext);
   await rememberReport({ version: 1, repositoryRoot: repository.location.repositoryRoot,
     generatedAt: view.generatedAt, checkoutBranch, checkoutCommit,
     scope: options.remote ? "remote" : "local",
+    mode: summary ? "types" : "detailed",
     scannedBranches: branches.map(({ ref, commitId }) => ({ ref, commitId })),
     settings: view.settings, filters: view.filters, order: view.order, markdown }, userPaths);
-  context.writeOutput(renderCodeReportTerminal(view));
+  context.writeOutput(summary ? renderTypeSummaryTerminal(summary) : renderCodeReportTerminal(view));
   if (options.save === true) {
     const interactive = isInteractive(context.env, context.interactive);
     const saved = await saveMarkdownReport(markdown, {
