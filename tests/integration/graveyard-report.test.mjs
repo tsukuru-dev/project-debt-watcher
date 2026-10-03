@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { test } from "node:test";
 import { runCli } from "../../dist/program.js";
@@ -37,6 +37,10 @@ test("graveyard reports committed code across local or remote refs with temporar
   assert.match(normal.stdout, /🦖 \| \d+ days \| TODO \| main:legacy\.js:1 \| replace legacy route \| Demo Older/);
   assert.ok(!normal.stdout.includes("dirty working-tree text"));
   assert.ok(!normal.stdout.includes("recent cleanup"));
+  const firstLatest = await invoke(["--save", "latest", "--output", "./first-latest.md",
+    "--repo", relative(f.root, repo)], f.root);
+  assert.equal(firstLatest.status, 0, firstLatest.stderr);
+  assert.match(readFileSync(join(f.root, "first-latest.md"), "utf8"), /Code comments: 1/);
 
   const included = await invoke(["--filter", "includefresh=true", "--order", "newold"]);
   assert.equal(included.status, 0, included.stderr);
@@ -82,18 +86,40 @@ test("graveyard reports committed code across local or remote refs with temporar
   assert.equal(missing.status, 1);
   assert.match(missing.stderr, /Report directory does not exist/);
   assert.ok(!existsSync(join(repo, "debt-watcher-reports")));
+  const recovered = await invoke(["--save", "latest", "--output", "./recovered.md",
+    "--repo", relative(f.root, repo)], f.root);
+  assert.equal(recovered.status, 0, recovered.stderr);
+  assert.match(readFileSync(join(f.root, "recovered.md"), "utf8"), /Code comments: 1/);
   mkdirSync(join(repo, "debt-watcher-reports"));
   const configured = await invoke(["--save"]);
   assert.equal(configured.status, 0, configured.stderr);
   assert.match(configured.stdout, /Saved report:/);
   assert.equal(readFileSync(configPath, "utf8"), beforeConfig);
+
+  const generatedPath = configured.stdout.match(/Saved report: ([^\r\n]+)/)?.[1];
+  assert.ok(generatedPath);
+  const generatedMarkdown = readFileSync(generatedPath, "utf8");
+  unlinkSync(configPath);
+  writeFileSync(join(repo, "legacy.js"), "// TODO: changed again after reporting\n");
+  const latest = await invoke(["--save", "latest", "--repo", relative(f.root, repo),
+    "--output", "./latest-copy.md"], f.root);
+  assert.equal(latest.status, 0, latest.stderr);
+  assert.match(latest.stdout, /Exported report generated .* from main .* local branches/);
+  assert.equal(readFileSync(join(f.root, "latest-copy.md"), "utf8"), generatedMarkdown);
+  assert.ok(!latest.stdout.includes("changed again after reporting"));
+
+  const other = f.repository("other");
+  const noSnapshot = await invoke(["--save", "latest", "--repo", relative(f.root, other),
+    "--output", "./other-copy.md"], f.root);
+  assert.equal(noSnapshot.status, 1);
+  assert.match(noSnapshot.stderr, /No previous report exists for this repository/);
+  assert.ok(!existsSync(join(f.root, "other-copy.md")));
 });
 
 test("unsupported report modes fail before repository setup or scanning", async (t) => {
   const f = fixture(t);
   for (const [args, message] of [
     [["--summary"], /summaries are not implemented/],
-    [["--save", "latest"], /latest report is not implemented/],
     [["--filter", "type=branches"], /Only type=code is available/],
   ]) {
     let stderr = "";

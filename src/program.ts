@@ -61,12 +61,16 @@ function createProgram(options: CliOptions): Command {
       // Exporting a cached report must not initialise or repair a changed checkout.
       if (values.save === "latest") {
         if (options.report) return options.report(values);
-        return runGraveyard(values, undefined, { env: context.env, cwd: context.cwd, writeOutput });
+        return runGraveyard(values, undefined, { env: context.env, cwd: context.cwd,
+          ...(context.homeDirectory === undefined ? {} : { homeDirectory: context.homeDirectory }),
+          ...(context.interactive === undefined ? {} : { interactive: context.interactive }),
+          ...(context.confirm === undefined ? {} : { confirm: context.confirm }), writeOutput });
       }
       await initialise();
       const repository = await prepareReportRepository(values, context);
       if (options.report) await options.report(values, repository);
       else await runGraveyard(values, repository, { env: context.env, cwd: context.cwd,
+        ...(context.homeDirectory === undefined ? {} : { homeDirectory: context.homeDirectory }),
         ...(context.interactive === undefined ? {} : { interactive: context.interactive }),
         ...(context.confirm === undefined ? {} : { confirm: context.confirm }), writeOutput });
     },
@@ -93,10 +97,10 @@ function createProgram(options: CliOptions): Command {
     })
     .showHelpAfterError("Run 'debt-watcher --help' for usage.")
     .exitOverride()
-    .addHelpText("after", "\nCode-comment reports and new Markdown saves are available. Summaries and --save latest are pending.");
+    .addHelpText("after", "\nCode-comment reports, Markdown saves and latest exports are available. Summaries are pending.");
 
   program.command("graveyard")
-    .description("Show or save a code-comment report (summaries and latest export pending)")
+    .description("Show or save a code-comment report (summaries pending)")
     .addOption(new Option("--summary [mode]", "Summarise by types (default) or blame")
       .choices(["types", "blame"]).preset("types"))
     .addOption(new Option("--save [mode]", "Save a new report, or export the latest snapshot")
@@ -117,8 +121,9 @@ function createProgram(options: CliOptions): Command {
       "  debt-watcher graveyard --filter includefresh=true --order newold",
       "  debt-watcher graveyard --remote --all --filter type=code",
       "  debt-watcher graveyard --save --output ./report.md",
+      "  debt-watcher graveyard --save latest --output ./copy.md",
       "",
-      "Summaries and --save latest are planned but not yet available.",
+      "Summaries are planned but not yet available.",
     ].join("\n"))
     .action(async (_localOptions, command: Command) => {
       const values = command.optsWithGlobals<GraveyardArguments>();

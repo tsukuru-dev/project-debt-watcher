@@ -18,8 +18,12 @@ function reason(file: UnscannedFile): string {
 }
 
 /** A self-contained, UTF-8 export of the selected code-only view. */
-export function renderCodeReportMarkdown(view: CodeReportView): string {
+export function renderCodeReportMarkdown(view: CodeReportView,
+  context: { checkoutBranch: string | null; checkoutCommit: string | null; scope: "local" | "remote" }): string {
   const lines = ["# Graveyard — code comments", "", `Generated: ${safe(view.generatedAt)}`,
+    `Generating checkout: ${safe(context.checkoutBranch ?? "detached HEAD")}`
+      + (context.checkoutCommit ? ` (${safe(context.checkoutCommit)})` : " (no commit)"),
+    `Scope: ${context.scope}`,
     `Branches: ${view.branches.length ? view.branches.map((branch) =>
       `${branch.scope}/${safe(branch.name)}`).join(", ") : "(none)"}`, "",
     "## Summary", "", `Total debt: ${view.counts.total}`, `Code comments: ${view.counts.code}`,
