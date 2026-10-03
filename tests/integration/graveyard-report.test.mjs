@@ -65,7 +65,7 @@ test("graveyard reports committed code across local or remote refs with temporar
   const blameSummary = await invoke(["--summary", "blame", "--filter", "includefresh=true"]);
   assert.equal(blameSummary.status, 0, blameSummary.stderr);
   assert.match(blameSummary.stdout, /Graveyard — summary by author/);
-  assert.match(blameSummary.stdout, /Total debt: 2/);
+  assert.match(blameSummary.stdout, /Total debt: 3/);
   assert.match(blameSummary.stdout, /Demo Older <older@example\.test>: 1/);
   assert.match(blameSummary.stdout, /Debt Watcher tests <tests@example\.invalid>: 1/);
   assert.ok(!blameSummary.stdout.includes("replace legacy route"));
@@ -110,7 +110,7 @@ test("graveyard reports committed code across local or remote refs with temporar
   assert.equal(saved.status, 0, saved.stderr);
   assert.match(saved.stdout, /Saved report:/);
   const markdown = readFileSync(destination, "utf8");
-  assert.match(markdown, /# Graveyard — code comments/);
+  assert.match(markdown, /# Graveyard — project debt/);
   assert.match(markdown, /Code comments: 2/);
   assert.match(markdown, /replace legacy route/);
   assert.match(markdown, /recent cleanup/);
@@ -158,7 +158,7 @@ test("graveyard reports committed code across local or remote refs with temporar
 test("unsupported report modes fail before repository setup or scanning", async (t) => {
   const f = fixture(t);
   for (const [args, message] of [
-    [["--filter", "type=branches"], /Only type=code is available/],
+    [["--filter", "type=issues"], /Only code and branches are available/],
   ]) {
     let stderr = "";
     const status = await runCli(["graveyard", ...args], { version: "0.0.0", cwd: f.root,
@@ -167,4 +167,61 @@ test("unsupported report modes fail before repository setup or scanning", async 
     assert.match(stderr, message);
     assert.ok(!stderr.includes("Cannot resolve a Git working tree"));
   }
+});
+
+test("graveyard includes stale local and remote branches in reports and summaries", async (t) => {
+  const f = fixture(t), repo = f.repository();
+  f.writeConfig(repo);
+  writeFileSync(join(repo, "plain.txt"), "old branch\n");
+  f.git(repo, ["add", "plain.txt"]);
+  await runGit(["-c", "commit.gpgSign=false", "-c", "user.name=Old Branch Author",
+    "-c", "user.email=old-branch@example.test", "commit", "--quiet", "-m", "old branch"],
+  { cwd: repo, env: { ...f.env, GIT_AUTHOR_DATE: "2020-01-01T12:00:00Z",
+    GIT_COMMITTER_DATE: "2020-01-01T12:00:00Z" } });
+  const oldCommit = f.git(repo, ["rev-parse", "HEAD"]);
+  f.git(repo, ["branch", "legacy"]);
+  f.git(repo, ["update-ref", "refs/remotes/origin/legacy", oldCommit]);
+  writeFileSync(join(repo, "plain.txt"), "recent branch\n");
+  f.git(repo, ["add", "plain.txt"]);
+  f.git(repo, ["commit", "--quiet", "-m", "recent branch"]);
+
+  const normal = await f.invoke(["graveyard"], repo);
+  assert.equal(normal.status, 0, normal.stderr);
+  assert.match(normal.stdout, /Total debt \(1\)/);
+  assert.match(normal.stdout, /Code comments \(0\)/);
+  assert.match(normal.stdout, /Stale branches \(1\)/);
+  assert.match(normal.stdout, /legacy/);
+  assert.match(normal.stdout, /Oldest branch: \d+ days \| legacy/);
+  assert.ok(!normal.stdout.includes("recent branch"));
+
+  const codeOnly = await f.invoke(["graveyard", "--filter", "type=code"], repo);
+  assert.equal(codeOnly.status, 0, codeOnly.stderr);
+  assert.match(codeOnly.stdout, /Total debt \(0\)/);
+  const branchOnly = await f.invoke(["graveyard", "--filter", "type=branches",
+    "--filter", "author=old-branch@example.test"], repo);
+  assert.equal(branchOnly.status, 0, branchOnly.stderr);
+  assert.match(branchOnly.stdout, /Total debt \(1\)/);
+  const wrongAuthor = await f.invoke(["graveyard", "--filter", "type=branches",
+    "--filter", "author=nobody"], repo);
+  assert.equal(wrongAuthor.status, 0, wrongAuthor.stderr);
+  assert.match(wrongAuthor.stdout, /Total debt \(0\)/);
+
+  const types = await f.invoke(["graveyard", "--summary"], repo);
+  assert.equal(types.status, 0, types.stderr);
+  assert.match(types.stdout, /Stale branches: 1/);
+  assert.match(types.stdout, /Oldest: branch \| \d+ days \| legacy/);
+  const authors = await f.invoke(["graveyard", "--summary", "blame"], repo);
+  assert.equal(authors.status, 0, authors.stderr);
+  assert.match(authors.stdout, /Old Branch Author <old-branch@example\.test> \(branches\): 1/);
+
+  const saved = await f.invoke(["graveyard", "--save", "--output", "./branch-report.md"], repo);
+  assert.equal(saved.status, 0, saved.stderr);
+  const markdown = readFileSync(join(repo, "branch-report.md"), "utf8");
+  assert.match(markdown, /Stale branches: 1/);
+  assert.match(markdown, /\| legacy \| Old Branch Author \|/);
+
+  const remote = await f.invoke(["graveyard", "--remote"], repo);
+  assert.equal(remote.status, 0, remote.stderr);
+  assert.match(remote.stdout, /Stale branches \(1\)/);
+  assert.match(remote.stdout, /origin\/legacy/);
 });

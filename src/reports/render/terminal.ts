@@ -1,6 +1,7 @@
 import type { AgeCategory } from "../ages.js";
-import type { CodeFinding, CodeReportView, UnscannedFile } from "../types.js";
+import type { CodeFinding, CodeReportView, CombinedReportView, UnscannedFile } from "../types.js";
 import type { AuthorSummary, TypeSummary } from "../summaries.js";
+import type { BranchTipFinding } from "../../scanners/branches.js";
 
 export interface TerminalReportOptions {
   /** The caller supplies a URL for the exact committed source. Omit when unavailable. */
@@ -49,7 +50,7 @@ function unscannedReason(file: UnscannedFile): string {
   }
 }
 
-/** Render the filtered code view only; branches and issues join the report in later chunks. */
+/** Retained code-only renderer for callers that use a code view directly. */
 export function renderCodeReportTerminal(view: CodeReportView, options: TerminalReportOptions = {}): string {
   const lines = ["Graveyard — code comments", `Generated: ${view.generatedAt}`,
     `Branches: ${view.branches.length ? view.branches.map((branch) =>
@@ -78,14 +79,52 @@ export function renderCodeReportTerminal(view: CodeReportView, options: Terminal
   return lines.join("\n") + "\n";
 }
 
+/** Detailed report with code and branch sections, using the same filtered totals. */
+export function renderCombinedReportTerminal(view: CombinedReportView): string {
+  const lines = ["Graveyard — project debt", `Generated: ${view.generatedAt}`,
+    `Branches: ${view.branches.length ? view.branches.map((branch) =>
+      `${branch.scope}/${plain(branch.name)}`).join(", ") : "(none)"}`,
+    `Total debt (${view.counts.total})`,
+    `Fresh ${view.counts.categories.fresh} | Ageing ${view.counts.categories.ageing}`
+      + ` | Buried ${view.counts.categories.buried} | Fossil ${view.counts.categories.fossil}`,
+    `Code comments (${view.counts.code})`];
+  if (!view.findings.length) lines.push("No matching code comments found.");
+  for (const finding of view.findings) {
+    lines.push(`${AGE_ICONS[finding.category]} | ${finding.ageDays} days | `
+      + `${plain(finding.primary.marker)} | ${location(finding)} | ${description(finding)}`
+      + (view.settings.showAuthors ? ` | ${plain(finding.primary.attribution.authorName) || "Unknown"}` : ""));
+  }
+  lines.push(`Stale branches (${view.counts.branches})`);
+  if (!view.branchFindings.length) lines.push("No matching stale branches found.");
+  for (const finding of view.branchFindings) {
+    lines.push(`${AGE_ICONS[finding.category]} | ${finding.ageDays} days | ${finding.branch.commitId}`
+      + ` | ${plain(finding.branch.name)}`
+      + (view.settings.showAuthors ? ` | ${plain(finding.authorName) || "Unknown"}` : ""));
+  }
+  if (view.oldest?.kind === "code") {
+    lines.push(`Oldest code comment: ${view.oldest.finding.ageDays} days | ${location(view.oldest.finding)}`);
+  } else if (view.oldest?.kind === "branches") {
+    lines.push(`Oldest branch: ${view.oldest.finding.ageDays} days | ${plain(view.oldest.finding.branch.name)}`);
+  }
+  if (view.unscanned.length) {
+    lines.push(`Unscanned files (${view.unscanned.length}); debt in these files is unknown:`);
+    for (const file of view.unscanned) {
+      lines.push(`- ${plain(file.branch.name)}:${plain(file.file.path)} — ${unscannedReason(file)}`);
+    }
+  }
+  return lines.join("\n") + "\n";
+}
+
 /** Compact type counts for the same filtered findings; no individual rows. */
 export function renderTypeSummaryTerminal(summary: TypeSummary): string {
   const lines = ["Graveyard — summary by type", `Generated: ${summary.generatedAt}`,
     `Scanned branches: ${summary.branchCount}`, `Total debt: ${summary.counts.total}`,
     `Code comments: ${summary.counts.code}`,
+    `Stale branches: ${summary.counts.branches}`,
     `Fresh ${summary.counts.categories.fresh} | Ageing ${summary.counts.categories.ageing}`
       + ` | Buried ${summary.counts.categories.buried} | Fossil ${summary.counts.categories.fossil}`,
-    summary.oldest ? `Oldest: code comment | ${summary.oldest.ageDays} days | ${location(summary.oldest)}`
+    summary.oldestKind === "code" ? `Oldest: code comment | ${summary.oldest!.ageDays} days | ${location(summary.oldest as CodeFinding)}`
+      : summary.oldestKind === "branches" ? `Oldest: branch | ${summary.oldest!.ageDays} days | ${plain((summary.oldest as BranchTipFinding).branch.name)}`
       : "Oldest: none"];
   if (summary.unscannedCount) lines.push(`Unscanned files: ${summary.unscannedCount}; debt in these files is unknown.`);
   return lines.join("\n") + "\n";
@@ -96,10 +135,16 @@ export function renderAuthorSummaryTerminal(summary: AuthorSummary): string {
     `Scanned branches: ${summary.branchCount}`, `Total debt: ${summary.total}`, "Authors:"];
   if (!summary.groups.length) lines.push("(none)");
   for (const group of summary.groups) {
-    lines.push(`${plain(group.label)}: ${group.count} | oldest ${group.oldest.ageDays} days | ${location(group.oldest)}`);
+    const label = plain(group.label) + (group.kind === "branches" && group.identity !== "unknown" ? " (branches)" : "");
+    const place = group.kind === "code" ? location(group.oldest as CodeFinding)
+      : plain((group.oldest as BranchTipFinding).branch.name);
+    lines.push(`${label}: ${group.count} | oldest ${group.oldest.ageDays} days | ${place}`);
   }
-  lines.push(summary.oldest ? `Oldest: code comment | ${summary.oldest.ageDays} days | ${location(summary.oldest)}`
-    : "Oldest: none");
+  lines.push(summary.oldestKind === "code"
+    ? `Oldest: code comment | ${summary.oldest!.ageDays} days | ${location(summary.oldest as CodeFinding)}`
+    : summary.oldestKind === "branches"
+      ? `Oldest: branch | ${summary.oldest!.ageDays} days | ${plain((summary.oldest as BranchTipFinding).branch.name)}`
+      : "Oldest: none");
   if (summary.unscannedCount) lines.push(`Unscanned files: ${summary.unscannedCount}; debt in these files is unknown.`);
   return lines.join("\n") + "\n";
 }

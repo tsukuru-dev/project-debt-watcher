@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { buildCodeReportView } from "../../dist/reports/filters.js";
+import { buildCodeReportView, buildCombinedReportView } from "../../dist/reports/filters.js";
 import { buildAuthorSummary, buildTypeSummary } from "../../dist/reports/summaries.js";
 import { renderAuthorSummaryTerminal, renderTypeSummaryTerminal } from "../../dist/reports/render/terminal.js";
 
@@ -121,4 +121,42 @@ test("author summary groups by identity, orders groups by oldest finding, and la
   assert.equal(empty.total, 0);
   assert.deepEqual(empty.groups, []);
   assert.match(renderAuthorSummaryTerminal(empty), /Oldest: none/);
+});
+
+test("combined view uses the oldest code or branch for automatic bands and filtered totals", () => {
+  const automaticSettings = { ...settings, showAuthors: false };
+  delete automaticSettings.ageing;
+  delete automaticSettings.buried;
+  const code = { ...older, ageDays: 100, category: "fossil" };
+  const oldBranch = { branch: { ...older.branch, ref: "refs/heads/legacy", name: "legacy" },
+    authorName: "Branch Author", authorEmail: "branch@example.test",
+    authoredAt: "2020-01-01T00:00:00.000Z", committedAt: "2020-01-02T00:00:00.000Z",
+    ageDays: 200, category: "fossil" };
+  const newBranch = { ...oldBranch,
+    branch: { ...older.branch, ref: "refs/heads/recent", name: "recent" },
+    committedAt: "2026-10-02T00:00:00.000Z", ageDays: 0, category: "fresh" };
+  const source = { ...snapshot, settings: automaticSettings, findings: [code],
+    branches: [code.branch, oldBranch.branch, newBranch.branch] };
+  const branchScan = { generatedAt: source.generatedAt, thresholds: source.thresholds,
+    findings: [newBranch, oldBranch] };
+  const view = buildCombinedReportView(source, branchScan);
+  assert.deepEqual(view.thresholds, { mode: "automatic", fresh: 30, ageing: 86, buried: 143 });
+  assert.deepEqual(view.counts, { total: 2, code: 1, branches: 1,
+    categories: { fresh: 0, ageing: 0, buried: 1, fossil: 1 } });
+  assert.equal(view.findings[0].category, "buried");
+  assert.equal(view.oldest.kind, "branches");
+  assert.equal(view.oldest.finding.branch.name, "legacy");
+  assert.equal(source.findings[0].category, "fossil");
+  assert.equal(buildTypeSummary(view).counts.branches, 1);
+  assert.deepEqual(buildAuthorSummary(view).groups.map(({ kind }) => kind), ["branches", "code"]);
+
+  const filtered = buildCombinedReportView(source, branchScan,
+    { filter: { type: ["branches"], includeFresh: true, author: "branch@" }, order: "newold" });
+  assert.deepEqual(filtered.branchFindings.map(({ branch }) => branch.name), ["recent", "legacy"]);
+  assert.equal(filtered.counts.total, 2);
+  assert.equal(filtered.counts.categories.fresh, 1);
+  assert.equal(filtered.oldest.finding.branch.name, "legacy");
+  assert.equal(buildCombinedReportView(source, branchScan, { filter: { type: ["code"] } }).counts.total, 1);
+  assert.throws(() => buildCombinedReportView(source, branchScan, { filter: { type: ["issues"] } }),
+    /Only code and branches/);
 });

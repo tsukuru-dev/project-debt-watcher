@@ -22,7 +22,7 @@ test("compiled CLI works outside a Git repository and creates no user or project
       [["graveyard", "--help"], 0, /--summary/],
       [["--global", "config", "--help"], 0, /--copy-from/],
       [["init", "--help"], 0, /--repo/],
-      [["graveyard", "--filter", "type=branches"], 1, /Only type=code is available/],
+      [["graveyard", "--filter", "type=issues"], 1, /Only code and branches are available/],
       [["config", "--list"], 1, /Cannot resolve a Git working tree/],
       [["--global", "config"], 1, /Cannot open an editor in non-interactive use/],
       [["init"], 1, /Cannot resolve a Git working tree/],

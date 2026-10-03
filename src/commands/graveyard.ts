@@ -2,10 +2,11 @@ import type { GraveyardArguments } from "./arguments.js";
 import type { PreparedRepository } from "../setup/flow.js";
 import { selectBranches } from "../git/branches.js";
 import { scanCommittedComments } from "../scanners/comments/scan.js";
+import { scanBranchTips } from "../scanners/branches.js";
 import { buildCodeFindings } from "../reports/build.js";
-import { buildCodeReportView } from "../reports/filters.js";
-import { renderAuthorSummaryTerminal, renderCodeReportTerminal, renderTypeSummaryTerminal } from "../reports/render/terminal.js";
-import { renderAuthorSummaryMarkdown, renderCodeReportMarkdown, renderTypeSummaryMarkdown } from "../reports/render/markdown.js";
+import { buildCombinedReportView } from "../reports/filters.js";
+import { renderAuthorSummaryTerminal, renderCombinedReportTerminal, renderTypeSummaryTerminal } from "../reports/render/terminal.js";
+import { renderAuthorSummaryMarkdown, renderCombinedReportMarkdown, renderTypeSummaryMarkdown } from "../reports/render/markdown.js";
 import { buildAuthorSummary, buildTypeSummary } from "../reports/summaries.js";
 import { resolveReportSettings } from "../reports/settings.js";
 import { saveMarkdownReport } from "../storage/exports.js";
@@ -28,8 +29,8 @@ export interface GraveyardContext {
 
 /** Reject unavailable views before interactive setup or an expensive source scan. */
 export function assertCodeReportOptions(options: GraveyardArguments): void {
-  if (options.filter?.type?.some((type) => type !== "code")) {
-    throw new Error("Only type=code is available until branch and issue scanning are implemented.");
+  if (options.filter?.type?.includes("issues")) {
+    throw new Error("Only code and branches are available until issue scanning is implemented.");
   }
 }
 
@@ -50,7 +51,7 @@ async function offerRememberDirectory(alternateDirectory: string | undefined,
   }
 }
 
-/** Generate the current code-only report from immutable local or remote branch snapshots. */
+/** Generate a code and branch report from immutable local or remote branch snapshots. */
 export async function runGraveyard(options: GraveyardArguments, repository: PreparedRepository | undefined,
   context: GraveyardContext): Promise<void> {
   assertCodeReportOptions(options);
@@ -80,9 +81,11 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
   const git = { cwd: repository.location.repositoryRoot,
     ...(context.env === undefined ? {} : { env: context.env }) };
   const branches = await selectBranches(git, options.remote ? "remote" : "local");
+  const asOf = new Date();
   const scan = await scanCommittedComments(git, branches, settings.markers);
-  const snapshot = buildCodeFindings(scan, settings, new Date());
-  const view = buildCodeReportView(snapshot, {
+  const branchScan = await scanBranchTips(git, branches, settings, asOf);
+  const snapshot = buildCodeFindings(scan, settings, asOf);
+  const view = buildCombinedReportView(snapshot, branchScan, {
     ...(options.filter === undefined ? {} : { filter: options.filter }),
     ...(options.order === undefined ? {} : { order: options.order }),
   });
@@ -96,7 +99,7 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
     scope: options.remote ? "remote" as const : "local" as const };
   const markdown = summary ? renderTypeSummaryMarkdown(summary, reportContext)
     : authorSummary ? renderAuthorSummaryMarkdown(authorSummary, reportContext)
-      : renderCodeReportMarkdown(view, reportContext);
+      : renderCombinedReportMarkdown(view, reportContext);
   await rememberReport({ version: 1, repositoryRoot: repository.location.repositoryRoot,
     generatedAt: view.generatedAt, checkoutBranch, checkoutCommit,
     scope: options.remote ? "remote" : "local",
@@ -104,7 +107,7 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
     scannedBranches: branches.map(({ ref, commitId }) => ({ ref, commitId })),
     settings: view.settings, filters: view.filters, order: view.order, markdown }, userPaths);
   context.writeOutput(summary ? renderTypeSummaryTerminal(summary)
-    : authorSummary ? renderAuthorSummaryTerminal(authorSummary) : renderCodeReportTerminal(view));
+    : authorSummary ? renderAuthorSummaryTerminal(authorSummary) : renderCombinedReportTerminal(view));
   if (options.save === true) {
     const interactive = isInteractive(context.env, context.interactive);
     const saved = await saveMarkdownReport(markdown, {
