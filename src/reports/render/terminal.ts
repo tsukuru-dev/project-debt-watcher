@@ -1,6 +1,6 @@
 import type { AgeCategory } from "../ages.js";
 import type { CodeFinding, CodeReportView, UnscannedFile } from "../types.js";
-import type { TypeSummary } from "../summaries.js";
+import type { AuthorSummary, TypeSummary } from "../summaries.js";
 
 export interface TerminalReportOptions {
   /** The caller supplies a URL for the exact committed source. Omit when unavailable. */
@@ -87,6 +87,19 @@ export function renderTypeSummaryTerminal(summary: TypeSummary): string {
       + ` | Buried ${summary.counts.categories.buried} | Fossil ${summary.counts.categories.fossil}`,
     summary.oldest ? `Oldest: code comment | ${summary.oldest.ageDays} days | ${location(summary.oldest)}`
       : "Oldest: none"];
+  if (summary.unscannedCount) lines.push(`Unscanned files: ${summary.unscannedCount}; debt in these files is unknown.`);
+  return lines.join("\n") + "\n";
+}
+
+export function renderAuthorSummaryTerminal(summary: AuthorSummary): string {
+  const lines = ["Graveyard — summary by author", `Generated: ${summary.generatedAt}`,
+    `Scanned branches: ${summary.branchCount}`, `Total debt: ${summary.total}`, "Authors:"];
+  if (!summary.groups.length) lines.push("(none)");
+  for (const group of summary.groups) {
+    lines.push(`${plain(group.label)}: ${group.count} | oldest ${group.oldest.ageDays} days | ${location(group.oldest)}`);
+  }
+  lines.push(summary.oldest ? `Oldest: code comment | ${summary.oldest.ageDays} days | ${location(summary.oldest)}`
+    : "Oldest: none");
   if (summary.unscannedCount) lines.push(`Unscanned files: ${summary.unscannedCount}; debt in these files is unknown.`);
   return lines.join("\n") + "\n";
 }

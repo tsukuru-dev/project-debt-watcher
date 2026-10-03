@@ -1,5 +1,5 @@
 import type { CodeFinding, CodeReportView, UnscannedFile } from "../types.js";
-import type { TypeSummary } from "../summaries.js";
+import type { AuthorSummary, TypeSummary } from "../summaries.js";
 
 const AGE_ICONS = { fresh: "🌱", ageing: "💀", buried: "🪦", fossil: "🦖" } as const;
 
@@ -68,6 +68,22 @@ export function renderTypeSummaryMarkdown(summary: TypeSummary,
     `Fresh: ${summary.counts.categories.fresh} · Ageing: ${summary.counts.categories.ageing}`
       + ` · Buried: ${summary.counts.categories.buried} · Fossil: ${summary.counts.categories.fossil}`,
     `Oldest: ${summary.oldest ? `code comment · ${summary.oldest.ageDays} days · ${place(summary.oldest)}` : "None"}`];
+  if (summary.unscannedCount) lines.push("", `Unscanned files: ${summary.unscannedCount}; debt in these files is unknown.`);
+  return lines.join("\n") + "\n";
+}
+
+export function renderAuthorSummaryMarkdown(summary: AuthorSummary,
+  context: { checkoutBranch: string | null; checkoutCommit: string | null; scope: "local" | "remote" }): string {
+  const lines = ["# Graveyard — summary by author", "", `Generated: ${safe(summary.generatedAt)}`,
+    `Generating checkout: ${safe(context.checkoutBranch ?? "detached HEAD")}`
+      + (context.checkoutCommit ? ` (${safe(context.checkoutCommit)})` : " (no commit)"),
+    `Scope: ${context.scope}`, `Scanned branches: ${summary.branchCount}`, "",
+    "| Author | Count | Oldest |", "| --- | ---: | --- |"];
+  for (const group of summary.groups) {
+    lines.push(`| ${safe(group.label)} | ${group.count} | ${group.oldest.ageDays} days · ${place(group.oldest)} |`);
+  }
+  lines.push("", `Total debt: ${summary.total}`, "",
+    `Oldest: ${summary.oldest ? `code comment · ${summary.oldest.ageDays} days · ${place(summary.oldest)}` : "None"}`);
   if (summary.unscannedCount) lines.push("", `Unscanned files: ${summary.unscannedCount}; debt in these files is unknown.`);
   return lines.join("\n") + "\n";
 }

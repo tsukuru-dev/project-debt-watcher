@@ -62,6 +62,24 @@ test("graveyard reports committed code across local or remote refs with temporar
     "--repo", relative(f.root, repo)], f.root);
   assert.equal(latestSummary.status, 0, latestSummary.stderr);
   assert.equal(readFileSync(join(f.root, "summary-copy.md"), "utf8"), summaryMarkdown);
+  const blameSummary = await invoke(["--summary", "blame", "--filter", "includefresh=true"]);
+  assert.equal(blameSummary.status, 0, blameSummary.stderr);
+  assert.match(blameSummary.stdout, /Graveyard — summary by author/);
+  assert.match(blameSummary.stdout, /Total debt: 2/);
+  assert.match(blameSummary.stdout, /Demo Older <older@example\.test>: 1/);
+  assert.match(blameSummary.stdout, /Debt Watcher tests <tests@example\.invalid>: 1/);
+  assert.ok(!blameSummary.stdout.includes("replace legacy route"));
+  const savedBlame = await invoke(["--summary", "blame", "--save", "--output", "./blame.md",
+    "--repo", relative(f.root, repo)], f.root);
+  assert.equal(savedBlame.status, 0, savedBlame.stderr);
+  const blameMarkdown = readFileSync(join(f.root, "blame.md"), "utf8");
+  assert.match(blameMarkdown, /# Graveyard — summary by author/);
+  assert.match(blameMarkdown, /Demo Older &lt;older@example\.test&gt;/);
+  assert.ok(!blameMarkdown.includes("replace legacy route"));
+  const latestBlame = await invoke(["--save", "latest", "--output", "./blame-copy.md",
+    "--repo", relative(f.root, repo)], f.root);
+  assert.equal(latestBlame.status, 0, latestBlame.stderr);
+  assert.equal(readFileSync(join(f.root, "blame-copy.md"), "utf8"), blameMarkdown);
 
   const included = await invoke(["--filter", "includefresh=true", "--order", "newold"]);
   assert.equal(included.status, 0, included.stderr);
@@ -140,7 +158,6 @@ test("graveyard reports committed code across local or remote refs with temporar
 test("unsupported report modes fail before repository setup or scanning", async (t) => {
   const f = fixture(t);
   for (const [args, message] of [
-    [["--summary", "blame"], /Author summaries are not implemented/],
     [["--filter", "type=branches"], /Only type=code is available/],
   ]) {
     let stderr = "";

@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { buildCodeReportView } from "../../dist/reports/filters.js";
-import { buildTypeSummary } from "../../dist/reports/summaries.js";
-import { renderTypeSummaryTerminal } from "../../dist/reports/render/terminal.js";
+import { buildAuthorSummary, buildTypeSummary } from "../../dist/reports/summaries.js";
+import { renderAuthorSummaryTerminal, renderTypeSummaryTerminal } from "../../dist/reports/render/terminal.js";
 
 const settings = JSON.parse(readFileSync(new URL("../../templates/debt-watcher.config.json", import.meta.url), "utf8"));
 const position = { offset: 0, line: 1, column: 1 };
@@ -93,4 +93,32 @@ test("type summary uses the filtered counts and oldest item without detailed row
   assert.equal(empty.counts.total, 0);
   assert.equal(empty.oldest, undefined);
   assert.match(renderTypeSummaryTerminal(empty), /Oldest: none/);
+});
+
+test("author summary groups by identity, orders groups by oldest finding, and labels hidden authors", () => {
+  const sameEmail = finding("src/alias.js", "2026-01-02T00:00:00.000Z", "Alex Alias", "alex@example.test", "fossil");
+  const otherEmail = finding("src/other.js", "2026-03-01T00:00:00.000Z", "Alex Smith", "other@example.test", "fossil");
+  const unknown = finding("src/unknown.js", "2026-02-01T00:00:00.000Z", "", "", "fossil");
+  const findings = [otherEmail, unknown, sameEmail, older];
+  const view = buildCodeReportView({ ...snapshot, findings });
+  const grouped = buildAuthorSummary(view);
+  assert.equal(grouped.total, 4);
+  assert.deepEqual(grouped.groups.map(({ count }) => count), [2, 1, 1]);
+  assert.deepEqual(grouped.groups.map(({ label }) => label),
+    ["Alex Alias <alex@example.test>", "Unknown", "Alex Smith <other@example.test>"]);
+  assert.equal(grouped.oldest, older);
+  assert.equal(grouped.unscannedCount, 1);
+  const printed = renderAuthorSummaryTerminal(grouped);
+  assert.match(printed, /Alex Alias <alex@example\.test>: 2/);
+  assert.ok(!printed.includes("src/alias.js"));
+  const reverse = buildAuthorSummary(buildCodeReportView({ ...snapshot, findings }, { order: "newold" }));
+  assert.deepEqual(reverse.groups.map(({ label }) => label),
+    ["Alex Smith <other@example.test>", "Unknown", "Alex Alias <alex@example.test>"]);
+  const filtered = buildAuthorSummary(buildCodeReportView({ ...snapshot, findings }, { filter: { author: "other@" } }));
+  assert.equal(filtered.total, 1);
+  assert.deepEqual(filtered.groups.map(({ label }) => label), ["Alex Smith <other@example.test>"]);
+  const empty = buildAuthorSummary(buildCodeReportView({ ...snapshot, findings }, { filter: { author: "nobody" } }));
+  assert.equal(empty.total, 0);
+  assert.deepEqual(empty.groups, []);
+  assert.match(renderAuthorSummaryTerminal(empty), /Oldest: none/);
 });
