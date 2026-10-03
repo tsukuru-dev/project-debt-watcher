@@ -1,6 +1,6 @@
 # Comment scanner: current implementation
 
-Branch selection, committed source reads, initial extractors for every listed language family, official Python/Ruby/Go/PHP tool adapters, marker matching, and a committed-source scan pipeline with Git blame are implemented, with the scope and limitations below. Report integration remains pending. The `graveyard` command still reports that generation is pending.
+Branch selection, committed source reads, initial extractors for every listed language family, official Python/Ruby/Go/PHP tool adapters, marker matching, and a committed-source scan pipeline with Git blame are implemented, with the scope and limitations below. The `graveyard` command uses this pipeline for code-only terminal reports.
 
 `selectBranches` snapshots every named local branch by default. Remote scope snapshots existing remote-tracking branches from all remotes, excluding symbolic aliases such as `origin/HEAD`. Tags are excluded. An empty repository returns no branches. Detached HEAD does not add an unnamed branch to the set. Different branches pointing to the same commit remain separate snapshots.
 
@@ -104,7 +104,7 @@ Malformed strings, escapes, URLs or unterminated comments return `invalid` with 
 
 ## Python extraction
 
-`createPythonCommentExtractor(options)` is the asynchronous official-tool-first entry point. Create it once per scan, then call its `extract(source)` method for each committed Python source. The returned `backend` records the name, version, executable for official extraction, or the fallback reason. It is not yet connected to `graveyard`.
+`createPythonCommentExtractor(options)` is the asynchronous official-tool-first entry point. The committed-source scanner creates it once per scan and calls `extract(source)` for each committed Python source. The returned `backend` records the name, version, executable for official extraction, or the fallback reason. `graveyard` uses this scanner.
 
 Automatic selection searches absolute PATH directories for existing `python3`/`python` executables (with `.exe` on Windows), preserving PATH order. It skips relative entries, Windows Store aliases and `py` installation launchers. Only Python 3.12-3.14 passing a tokenizer capability probe is selected; older/newer or unavailable installations use the fallback. The upper bound is deliberate until newer versions are checked. A failed probe is recorded in the fallback reason. No runtime is downloaded or installed.
 
@@ -124,7 +124,7 @@ Unterminated strings/fields, mismatched expression brackets, empty fields, inval
 
 This lexer does not validate indentation, the full expression grammar, Unicode character names, all escape values or bytes-literal contents. It targets modern Python 3 lexical syntax rather than enforcing the grammar of a particular installed interpreter; for example, the fallback accepts t-strings even where the selected official Python 3.12/3.13 backend would reject them. Neither path executes scanned source. The official adapter still performs full syntax validation with `ast.parse`.
 
-Fallback cases cover interpolation boundaries, positions, malformed input and nesting limits, with a shared corpus for comparisons against an available official Python installation. All 168 focused Python tests passed, with no skipped checks, including the new comparisons against official Python. The TypeScript build also passed during that run. Blame and report integration remain separate pending work.
+Fallback cases cover interpolation boundaries, positions, malformed input and nesting limits, with a shared corpus for comparisons against an available official Python installation. Blame and code-only report integration now use the extracted comments.
 
 ## Ruby extraction
 
@@ -168,4 +168,4 @@ The lexer returns `invalid` with no partial comments for unclosed comments or li
 
 This chunk uses the built-in lexer. Rust is not installed in the development environment, and no runtime was installed. Unit and committed-source integration cases have been added but not run at the user's request. The extractor is not yet wired into reporting.
 
-The committed-source scan now feeds a code-finding snapshot. Each flagged comment is one finding, even when it contains several markers; the oldest blamed marker supplies its age and primary author. The snapshot retains skipped, invalid, and unsupported files, along with the selected extraction backends. Age categories use the saved custom bounds or divide the range beyond `fresh` into three automatic bands through the oldest code finding. A separate code view applies fresh inclusion, author and `type=code` filters, then orders the matching findings and calculates their displayed counts and oldest item. Branch and issue type filters fail until their scanners exist. The code-only terminal renderer shows these findings, counts and unscanned files; a caller may supply a link to the exact committed source. Connecting this renderer to the `graveyard` command, cross-type age calculation, Markdown rendering and saving remain later steps.
+The committed-source scan now feeds a code-finding snapshot. Each flagged comment is one finding, even when it contains several markers; the oldest blamed marker supplies its age and primary author. The snapshot retains skipped, invalid, and unsupported files, along with the selected extraction backends. Age categories use the saved custom bounds or divide the range beyond `fresh` into three automatic bands through the oldest code finding. A separate code view applies fresh inclusion, author and `type=code` filters, then orders the matching findings and calculates their displayed counts and oldest item. The `graveyard` command now runs this code-only pipeline for committed local or fetched remote branch refs and prints the terminal renderer. Branch/issue debt, cross-type age calculation, summaries, Markdown rendering and saving remain later steps.

@@ -12,7 +12,7 @@ import {
   type InitArguments,
 } from "./commands/arguments.js";
 import { runConfig, type ConfigurationInteraction } from "./commands/config.js";
-import { runGraveyard } from "./commands/graveyard.js";
+import { assertCodeReportOptions, runGraveyard } from "./commands/graveyard.js";
 import { runInit } from "./commands/init.js";
 import type { TeamSetupContext } from "./setup/team.js";
 import { prepareReportRepository, type PreparedRepository } from "./setup/flow.js";
@@ -36,7 +36,7 @@ export interface CliOptions {
   terminal?: ConfigurationInteraction;
   setup?: Pick<TeamSetupContext, "npm" | "packageSpec" | "startingConfiguration">;
   isGlobalInstallation?: () => Promise<boolean>;
-  /** Report implementation boundary; setup finishes before dispatching original arguments. */
+  /** Optional report handler for integration tests; setup finishes before dispatch. */
   report?: (options: GraveyardArguments, repository?: PreparedRepository) => Promise<void>;
 }
 
@@ -57,11 +57,16 @@ function createProgram(options: CliOptions): Command {
   };
   const handlers: CommandHandlers = {
     graveyard: async (values) => {
+      if (!options.report) assertCodeReportOptions(values);
       // Exporting a cached report must not initialise or repair a changed checkout.
-      if (values.save === "latest") return (options.report ?? runGraveyard)(values);
+      if (values.save === "latest") {
+        if (options.report) return options.report(values);
+        return runGraveyard(values, undefined, { env: context.env, writeOutput });
+      }
       await initialise();
       const repository = await prepareReportRepository(values, context);
-      await (options.report ?? runGraveyard)(values, repository);
+      if (options.report) await options.report(values, repository);
+      else await runGraveyard(values, repository, { env: context.env, writeOutput });
     },
     config: async (values) => {
       await runConfig(values, context);
@@ -86,10 +91,10 @@ function createProgram(options: CliOptions): Command {
     })
     .showHelpAfterError("Run 'debt-watcher --help' for usage.")
     .exitOverride()
-    .addHelpText("after", "\nConfiguration, team setup and first-use setup are available. Report generation and saving are not implemented yet.");
+    .addHelpText("after", "\nCode-comment reports are available. Summaries and report saving are not implemented yet.");
 
   program.command("graveyard")
-    .description("Generate or save a detailed report or summary (implementation pending)")
+    .description("Show a code-comment report (summaries and saving pending)")
     .addOption(new Option("--summary [mode]", "Summarise by types (default) or blame")
       .choices(["types", "blame"]).preset("types"))
     .addOption(new Option("--save [mode]", "Save a new report, or export the latest snapshot")
@@ -107,10 +112,10 @@ function createProgram(options: CliOptions): Command {
     .addHelpText("after", [
       "",
       "Examples:",
-      "  debt-watcher graveyard --save --summary blame --filter includefresh=false",
-      "  debt-watcher graveyard --save latest --output ./reports/debt.md",
+      "  debt-watcher graveyard --filter includefresh=true --order newold",
+      "  debt-watcher graveyard --remote --all --filter type=code",
       "",
-      "--save latest allows --output and --repo, but cannot change the cached report.",
+      "Summaries and saving are planned but not yet available.",
     ].join("\n"))
     .action(async (_localOptions, command: Command) => {
       const values = command.optsWithGlobals<GraveyardArguments>();
