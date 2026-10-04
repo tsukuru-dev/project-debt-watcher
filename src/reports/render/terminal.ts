@@ -6,6 +6,7 @@ import type { BranchTipFinding } from "../../scanners/branches.js";
 export interface TerminalReportOptions {
   /** The caller supplies a URL for the exact committed source. Omit when unavailable. */
   sourceLink?: (finding: CodeFinding) => string | undefined;
+  commitLink?: (finding: BranchTipFinding) => string | undefined;
 }
 
 const AGE_ICONS: Record<AgeCategory, string> = {
@@ -80,7 +81,7 @@ export function renderCodeReportTerminal(view: CodeReportView, options: Terminal
 }
 
 /** Detailed report with code and branch sections, using the same filtered totals. */
-export function renderCombinedReportTerminal(view: CombinedReportView): string {
+export function renderCombinedReportTerminal(view: CombinedReportView, options: TerminalReportOptions = {}): string {
   const lines = ["Graveyard — project debt", `Generated: ${view.generatedAt}`,
     `Branches: ${view.branches.length ? view.branches.map((branch) =>
       `${branch.scope}/${plain(branch.name)}`).join(", ") : "(none)"}`,
@@ -91,13 +92,13 @@ export function renderCombinedReportTerminal(view: CombinedReportView): string {
   if (!view.findings.length) lines.push("No matching code comments found.");
   for (const finding of view.findings) {
     lines.push(`${AGE_ICONS[finding.category]} | ${finding.ageDays} days | `
-      + `${plain(finding.primary.marker)} | ${location(finding)} | ${description(finding)}`
+      + `${plain(finding.primary.marker)} | ${hyperlink(location(finding), options.sourceLink?.(finding))} | ${description(finding)}`
       + (view.settings.showAuthors ? ` | ${plain(finding.primary.attribution.authorName) || "Unknown"}` : ""));
   }
   lines.push(`Stale branches (${view.counts.branches})`);
   if (!view.branchFindings.length) lines.push("No matching stale branches found.");
   for (const finding of view.branchFindings) {
-    lines.push(`${AGE_ICONS[finding.category]} | ${finding.ageDays} days | ${finding.branch.commitId}`
+    lines.push(`${AGE_ICONS[finding.category]} | ${finding.ageDays} days | ${hyperlink(finding.branch.commitId, options.commitLink?.(finding))}`
       + ` | ${plain(finding.branch.name)}`
       + (view.settings.showAuthors ? ` | ${plain(finding.authorName) || "Unknown"}` : ""));
   }

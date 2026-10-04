@@ -46,4 +46,6 @@ npm run debt-watcher -- config --copy-from global
 
 The comment and branch-tip scanners feed the current report. `--filter type=code`, `--filter type=branches`, and a comma-separated combination select report sections. Both scanners use immutable branch snapshots from `src/git/branches.ts`; issue scanning comes later.
 
+Detailed terminal reports make code locations and branch commit IDs clickable when a matching GitHub or GitLab remote is configured. Saved detailed Markdown uses ordinary links to the same commit-pinned targets; `--save latest` preserves them as generated. Local branches use `origin` when present, or a sole supported remote. Remote-tracking branches use their named remote. SSH and HTTP(S) remote URLs are recognised without fetching; credentials embedded in a remote URL are never copied into report links. Custom-hosted instances can be recognised with the host settings already used by `gh` and `glab`: `GH_HOST` or `GITLAB_HOST`. Unknown or ambiguous hosts remain plain text. The links may be unavailable on the server when local commits have not been pushed.
+
 The comment scanner's committed-source reading APIs, language extractors, marker matching, and Git blame feed the code section. Extractor selection is internal; no extractor CLI flags or config keys are exposed. See `scanning.md` for scope and limitations.

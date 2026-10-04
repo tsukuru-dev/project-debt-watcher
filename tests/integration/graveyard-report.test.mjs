@@ -225,3 +225,40 @@ test("graveyard includes stale local and remote branches in reports and summarie
   assert.match(remote.stdout, /Stale branches \(1\)/);
   assert.match(remote.stdout, /origin\/legacy/);
 });
+
+test("graveyard links exact code lines and branch commits for matching hosted remotes", async (t) => {
+  const f = fixture(t), repo = f.repository();
+  f.writeConfig(repo);
+  writeFileSync(join(repo, "old code.js"), "// TODO: old code\n");
+  f.git(repo, ["add", "old code.js"]);
+  await runGit(["-c", "commit.gpgSign=false", "-c", "user.name=Link Author",
+    "-c", "user.email=links@example.test", "commit", "--quiet", "-m", "old code"],
+    { cwd: repo, env: { ...f.env, GIT_AUTHOR_DATE: "2020-01-01T12:00:00Z",
+      GIT_COMMITTER_DATE: "2020-01-01T12:00:00Z" } });
+  const commit = f.git(repo, ["rev-parse", "HEAD"]);
+  f.git(repo, ["remote", "add", "origin", "git@github.com:example/debt-watcher.git"]);
+  const local = await f.invoke(["graveyard", "--save", "--output", "./linked.md"], repo);
+  assert.equal(local.status, 0, local.stderr);
+  assert.ok(local.stdout.includes(`\u001b]8;;https://github.com/example/debt-watcher/blob/${commit}/old%20code.js#L1\u0007main:old code.js:1\u001b]8;;\u0007`));
+  assert.ok(local.stdout.includes(`\u001b]8;;https://github.com/example/debt-watcher/commit/${commit}\u0007${commit}\u001b]8;;\u0007`));
+  const markdown = readFileSync(join(repo, "linked.md"), "utf8");
+  assert.ok(markdown.includes(`[main:old code.js:1](https://github.com/example/debt-watcher/blob/${commit}/old%20code.js#L1)`));
+  assert.ok(markdown.includes(`[${commit}](https://github.com/example/debt-watcher/commit/${commit})`));
+  const latest = await f.invoke(["graveyard", "--save", "latest", "--output", "./linked-copy.md"], repo);
+  assert.equal(latest.status, 0, latest.stderr);
+  assert.equal(readFileSync(join(repo, "linked-copy.md"), "utf8"), markdown);
+
+  f.git(repo, ["remote", "add", "upstream", "git@gitlab.example.test:group/project.git"]);
+  f.git(repo, ["update-ref", "refs/remotes/upstream/main", commit]);
+  const remote = await f.invoke(["graveyard", "--remote"], repo);
+  assert.equal(remote.status, 0, remote.stderr);
+  assert.ok(remote.stdout.includes(`https://gitlab.example.test/group/project/-/blob/${commit}/old%20code.js#L1`));
+  assert.ok(remote.stdout.includes(`https://gitlab.example.test/group/project/-/commit/${commit}`));
+  assert.ok(!remote.stdout.includes("https://github.com/example/debt-watcher/blob/"));
+
+  f.git(repo, ["remote", "set-url", "origin", "https://example.test/team/project.git"]);
+  const unsupported = await f.invoke(["graveyard"], repo);
+  assert.equal(unsupported.status, 0, unsupported.stderr);
+  assert.ok(!unsupported.stdout.includes("\u001b]8;;"));
+  assert.match(unsupported.stdout, /main:old code\.js:1/);
+});

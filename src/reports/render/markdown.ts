@@ -14,6 +14,20 @@ function place(finding: CodeFinding): string {
   return `${safe(finding.branch.name)}:${safe(finding.file.path)}:${finding.primary.line}`;
 }
 
+export interface MarkdownReportLinks {
+  sourceLink?: (finding: CodeFinding) => string | undefined;
+  commitLink?: (finding: BranchTipFinding) => string | undefined;
+}
+
+function linked(label: string, target: string | undefined): string {
+  if (!target || /[\u0000-\u001f\u007f-\u009f]/u.test(target)) return label;
+  try {
+    const url = new URL(target);
+    if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) return label;
+    return `[${label}](${url.href.replaceAll("(", "%28").replaceAll(")", "%29")})`;
+  } catch { return label; }
+}
+
 function reason(file: UnscannedFile): string {
   if (file.status !== "skipped") return `${file.status}: ${safe(file.diagnostic.message)}`;
   return file.reason;
@@ -59,7 +73,8 @@ export function renderCodeReportMarkdown(view: CodeReportView,
 
 /** Export both detailed sections and their shared totals without terminal escapes. */
 export function renderCombinedReportMarkdown(view: CombinedReportView,
-  context: { checkoutBranch: string | null; checkoutCommit: string | null; scope: "local" | "remote" }): string {
+  context: { checkoutBranch: string | null; checkoutCommit: string | null; scope: "local" | "remote" },
+  links: MarkdownReportLinks = {}): string {
   const lines = ["# Graveyard — project debt", "", `Generated: ${safe(view.generatedAt)}`,
     `Generating checkout: ${safe(context.checkoutBranch ?? "detached HEAD")}`
       + (context.checkoutCommit ? ` (${safe(context.checkoutCommit)})` : " (no commit)"),
@@ -78,7 +93,8 @@ export function renderCombinedReportMarkdown(view: CombinedReportView,
     view.settings.showAuthors ? "| --- | ---: | --- | --- | --- | --- |" : "| --- | ---: | --- | --- | --- |");
     for (const finding of view.findings) {
       const cells = [`${AGE_ICONS[finding.category]} ${safe(finding.category)}`, String(finding.ageDays),
-        safe(finding.primary.marker), place(finding), safe(finding.comment.text) || "(no description)"];
+        safe(finding.primary.marker), linked(place(finding), links.sourceLink?.(finding)),
+        safe(finding.comment.text) || "(no description)"];
       if (view.settings.showAuthors) cells.push(safe(finding.primary.attribution.authorName) || "Unknown");
       lines.push(`| ${cells.join(" | ")} |`);
     }
@@ -92,7 +108,7 @@ export function renderCombinedReportMarkdown(view: CombinedReportView,
     view.settings.showAuthors ? "| --- | ---: | --- | --- | --- |" : "| --- | ---: | --- | --- |");
     for (const finding of view.branchFindings) {
       const cells = [`${AGE_ICONS[finding.category]} ${safe(finding.category)}`, String(finding.ageDays),
-        finding.branch.commitId, safe(finding.branch.name)];
+        linked(finding.branch.commitId, links.commitLink?.(finding)), safe(finding.branch.name)];
       if (view.settings.showAuthors) cells.push(safe(finding.authorName) || "Unknown");
       lines.push(`| ${cells.join(" | ")} |`);
     }

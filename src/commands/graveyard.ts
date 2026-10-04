@@ -16,6 +16,7 @@ import { confirm, isInteractive } from "../terminal/prompts.js";
 import { isAbsolute, join, relative, sep } from "node:path";
 import { resolveRepositoryRoot } from "../git/repository.js";
 import { runGit } from "../git/client.js";
+import { commitPermalink, resolveRemoteLinks, sourcePermalink } from "../git/remotes.js";
 import { CONFIG_FILENAME, type ConfigurationLocation } from "../config/types.js";
 
 export interface GraveyardContext {
@@ -91,6 +92,13 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
   });
   const summary = options.summary === "types" ? buildTypeSummary(view) : undefined;
   const authorSummary = options.summary === "blame" ? buildAuthorSummary(view) : undefined;
+  const remotes = await resolveRemoteLinks(git);
+  const links = {
+    sourceLink: (finding: typeof view.findings[number]) => sourcePermalink(
+      remotes.forBranch(finding.branch), finding.branch.commitId, finding.file.path, finding.primary.line),
+    commitLink: (finding: typeof view.branchFindings[number]) => commitPermalink(
+      remotes.forBranch(finding.branch), finding.branch.commitId),
+  };
   const checkoutBranch = await runGit(["symbolic-ref", "--quiet", "--short", "HEAD"], git)
     .then((name) => name.trim(), () => null);
   const checkoutCommit = await runGit(["rev-parse", "--verify", "HEAD"], git)
@@ -99,7 +107,7 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
     scope: options.remote ? "remote" as const : "local" as const };
   const markdown = summary ? renderTypeSummaryMarkdown(summary, reportContext)
     : authorSummary ? renderAuthorSummaryMarkdown(authorSummary, reportContext)
-      : renderCombinedReportMarkdown(view, reportContext);
+      : renderCombinedReportMarkdown(view, reportContext, links);
   await rememberReport({ version: 1, repositoryRoot: repository.location.repositoryRoot,
     generatedAt: view.generatedAt, checkoutBranch, checkoutCommit,
     scope: options.remote ? "remote" : "local",
@@ -107,7 +115,7 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
     scannedBranches: branches.map(({ ref, commitId }) => ({ ref, commitId })),
     settings: view.settings, filters: view.filters, order: view.order, markdown }, userPaths);
   context.writeOutput(summary ? renderTypeSummaryTerminal(summary)
-    : authorSummary ? renderAuthorSummaryTerminal(authorSummary) : renderCombinedReportTerminal(view));
+    : authorSummary ? renderAuthorSummaryTerminal(authorSummary) : renderCombinedReportTerminal(view, links));
   if (options.save === true) {
     const interactive = isInteractive(context.env, context.interactive);
     const saved = await saveMarkdownReport(markdown, {
