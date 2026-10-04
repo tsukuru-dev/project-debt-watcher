@@ -8,6 +8,7 @@ import { buildCombinedReportView } from "../reports/filters.js";
 import { renderAuthorSummaryTerminal, renderCombinedReportTerminal, renderTypeSummaryTerminal } from "../reports/render/terminal.js";
 import { renderAuthorSummaryMarkdown, renderCombinedReportMarkdown, renderTypeSummaryMarkdown } from "../reports/render/markdown.js";
 import { buildAuthorSummary, buildTypeSummary } from "../reports/summaries.js";
+import { resolveLocalSourceLinks } from "../reports/local-links.js";
 import { resolveReportSettings } from "../reports/settings.js";
 import { saveMarkdownReport } from "../storage/exports.js";
 import { latestReport, rememberReport } from "../storage/snapshots.js";
@@ -99,6 +100,9 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
     commitLink: (finding: typeof view.branchFindings[number]) => commitPermalink(
       remotes.forBranch(finding.branch), finding.branch.commitId),
   };
+  const localLinks = summary || authorSummary ? new Map() : await resolveLocalSourceLinks(view.findings, git);
+  const terminalLinks = { ...links,
+    sourceLink: (finding: typeof view.findings[number]) => localLinks.get(finding) ?? links.sourceLink(finding) };
   const checkoutBranch = await runGit(["symbolic-ref", "--quiet", "--short", "HEAD"], git)
     .then((name) => name.trim(), () => null);
   const checkoutCommit = await runGit(["rev-parse", "--verify", "HEAD"], git)
@@ -115,7 +119,7 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
     scannedBranches: branches.map(({ ref, commitId }) => ({ ref, commitId })),
     settings: view.settings, filters: view.filters, order: view.order, markdown }, userPaths);
   context.writeOutput(summary ? renderTypeSummaryTerminal(summary)
-    : authorSummary ? renderAuthorSummaryTerminal(authorSummary) : renderCombinedReportTerminal(view, links));
+    : authorSummary ? renderAuthorSummaryTerminal(authorSummary) : renderCombinedReportTerminal(view, terminalLinks));
   if (options.save === true) {
     const interactive = isInteractive(context.env, context.interactive);
     const saved = await saveMarkdownReport(markdown, {

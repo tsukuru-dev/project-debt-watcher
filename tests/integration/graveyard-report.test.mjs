@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { pathToFileURL } from "node:url";
 import { test } from "node:test";
 import { runCli } from "../../dist/program.js";
 import { runGit } from "../../dist/git/client.js";
@@ -237,9 +238,11 @@ test("graveyard links exact code lines and branch commits for matching hosted re
       GIT_COMMITTER_DATE: "2020-01-01T12:00:00Z" } });
   const commit = f.git(repo, ["rev-parse", "HEAD"]);
   f.git(repo, ["remote", "add", "origin", "git@github.com:example/debt-watcher.git"]);
-  const local = await f.invoke(["graveyard", "--save", "--output", "./linked.md"], repo);
+  const local = await f.invoke(["graveyard", "--save", "--output", "./linked.md"], repo,
+    { ...f.env, TERM_PROGRAM: "vscode" });
   assert.equal(local.status, 0, local.stderr);
-  assert.ok(local.stdout.includes(`\u001b]8;;https://github.com/example/debt-watcher/blob/${commit}/old%20code.js#L1\u0007main:old code.js:1\u001b]8;;\u0007`));
+  const editorLink = `vscode://file${pathToFileURL(join(repo, "old code.js")).pathname}:1:1`;
+  assert.ok(local.stdout.includes(`\u001b]8;;${editorLink}\u0007main:old code.js:1\u001b]8;;\u0007`));
   assert.ok(local.stdout.includes(`\u001b]8;;https://github.com/example/debt-watcher/commit/${commit}\u0007${commit}\u001b]8;;\u0007`));
   const markdown = readFileSync(join(repo, "linked.md"), "utf8");
   assert.ok(markdown.includes(`[main:old code.js:1](https://github.com/example/debt-watcher/blob/${commit}/old%20code.js#L1)`));
@@ -250,6 +253,7 @@ test("graveyard links exact code lines and branch commits for matching hosted re
 
   f.git(repo, ["remote", "add", "upstream", "git@gitlab.example.test:group/project.git"]);
   f.git(repo, ["update-ref", "refs/remotes/upstream/main", commit]);
+  writeFileSync(join(repo, "old code.js"), "// TODO: changed locally\n");
   const remote = await f.invoke(["graveyard", "--remote"], repo);
   assert.equal(remote.status, 0, remote.stderr);
   assert.ok(remote.stdout.includes(`https://gitlab.example.test/group/project/-/blob/${commit}/old%20code.js#L1`));

@@ -27,7 +27,7 @@ function hyperlink(label: string, target: string | undefined): string {
   let url: URL;
   try { url = new URL(target); }
   catch { return label; }
-  if (!["https:", "http:", "file:"].includes(url.protocol)
+  if (!["https:", "http:", "file:", "vscode:"].includes(url.protocol)
     || /[\u0000-\u001f\u007f-\u009f]/u.test(target)) return label;
   return `\u001b]8;;${url.href}\u0007${label}\u001b]8;;\u0007`;
 }
