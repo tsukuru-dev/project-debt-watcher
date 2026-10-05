@@ -24,7 +24,7 @@ function npm(args, cwd, environment = process.env) {
 }
 
 test("packed CLI installs and resolves its executable offline without development dependencies", () => {
-  const directory = mkdtempSync(join(tmpdir(), "debt-watcher-package-"));
+  const directory = mkdtempSync(join(tmpdir(), "debt-finder-package-"));
   try {
     // npm test already built the CLI. Do not recurse through build lifecycle scripts here.
     const [packed] = JSON.parse(npm(["pack", "--json", "--ignore-scripts", "--offline",
@@ -32,38 +32,38 @@ test("packed CLI installs and resolves its executable offline without developmen
     const paths = packed.files.map((file) => file.path);
     assert.ok(paths.includes("dist/cli.js"));
     assert.ok(paths.includes("dist/program.js"));
-    assert.ok(paths.includes("templates/debt-watcher.config.json"));
+    assert.ok(paths.includes("templates/debt-finder.config.json"));
     assert.ok(!paths.some((path) => /^(src|tests|node_modules)\//.test(path)));
-    assert.deepEqual(Object.keys(manifest.bin), ["debt-watcher"]);
+    assert.deepEqual(Object.keys(manifest.bin), ["debt-finder"]);
 
     writeFileSync(join(directory, "package.json"), JSON.stringify({
-      name: "debt-watcher-package-test", private: true,
-      scripts: { "debt-watcher": "debt-watcher" },
+      name: "debt-finder-package-test", private: true,
+      scripts: { "debt-finder": "debt-finder" },
     }));
     npm(["install", join(directory, packed.filename), "--offline", "--ignore-scripts",
       "--omit=dev", "--no-audit", "--no-fund", "--package-lock=false"], directory);
 
-    const version = npm(["exec", "--offline", "--", "debt-watcher", "--version"], directory);
+    const version = npm(["exec", "--offline", "--", "debt-finder", "--version"], directory);
     assert.equal(version.trim(), manifest.version);
-    const help = npm(["run", "--silent", "debt-watcher", "--", "graveyard", "--help"], directory);
-    assert.match(help, /Usage: debt-watcher graveyard/);
+    const help = npm(["run", "--silent", "debt-finder", "--", "graveyard", "--help"], directory);
+    assert.match(help, /Usage: debt-finder graveyard/);
     assert.match(help, /--save/);
 
     // Exercise template loading from the installed archive without touching the real user's settings.
     const home = join(directory, "test-home");
     const env = { ...process.env, CI: "true", HOME: home, USERPROFILE: home,
       APPDATA: join(home, "AppData", "Roaming"), XDG_CONFIG_HOME: join(home, ".config") };
-    const edited = npm(["run", "--silent", "debt-watcher", "--", "--global", "config",
+    const edited = npm(["run", "--silent", "debt-finder", "--", "--global", "config",
       "--set", "fresh=45", "includeFresh=true"], directory, env);
     assert.match(edited, /Created personal configuration/);
-    const configPath = join(userConfigDirectory({ env, homeDirectory: home }), "debt-watcher.config.json");
+    const configPath = join(userConfigDirectory({ env, homeDirectory: home }), "debt-finder.config.json");
     const config = JSON.parse(readFileSync(configPath, "utf8"));
-    const template = JSON.parse(readFileSync(join(project, "templates", "debt-watcher.config.json"), "utf8"));
+    const template = JSON.parse(readFileSync(join(project, "templates", "debt-finder.config.json"), "utf8"));
     const { ageing: _ageing, buried: _buried, ...automatic } = template;
     assert.deepEqual(config, { ...automatic, fresh: 45, includeFresh: true });
   } finally {
     assert.equal(dirname(resolve(directory)), resolve(tmpdir()));
-    assert.ok(basename(directory).startsWith("debt-watcher-package-"));
+    assert.ok(basename(directory).startsWith("debt-finder-package-"));
     rmSync(directory, { recursive: true, force: true });
   }
 });

@@ -1,6 +1,6 @@
-# Project Debt Watcher
+# Project Debt Finder
 
-Your friendly neighbourhood project debt watcher. Dig up forgotten TODOs, unresolved issues [coming soon], and stale branches before they become fossils.
+Your friendly neighbourhood project debt finder. Dig up forgotten TODOs, unresolved issues [coming soon], and stale branches before they become fossils.
 
 Want to help? See [CONTRIBUTING.md](https://github.com/tsukuru-dev/project-debt-watcher/blob/main/CONTRIBUTING.md) for issues, pull requests, and development steps.
 
@@ -16,7 +16,7 @@ Contents:
 
 ## What it does
 
-Project Debt Watcher is a command-line tool for Git repositories. Its `graveyard` report currently brings together different types of project debt:
+Project Debt Finder is a command-line tool for Git repositories. Its `graveyard` report currently brings together different types of project debt:
 
 - **Code comments:** unresolved comments (markers) such as `TODO`, `FIXME`, and `WORKAROUND` in code.
 - **Issues:** unresolved repository issues, with links to their original discussions. [coming soon]
@@ -27,12 +27,12 @@ Reports will show items from oldest to newest, making it easier to spot work tha
 GitHub and GitLab issue reporting is planned. The default detailed report has separate code and branch sections, each ordered oldest first. It shows ages, comment or commit details, and authors when enabled. It does not change your checkout.
 
 ### Code comments
-Debt Watcher finds ageing `TODO`, `FIXME`, and other configured markers in committed source comments.
+Debt Finder finds ageing `TODO`, `FIXME`, and other configured markers in committed source comments.
 
 These can be configured based on your needs using the config file.
 
 ### Stale branches
-Debt watcher finds lost branches by looking at latest commit dates. It reports ages and authors without changing your checkout.
+Debt Finder finds lost branches by looking at latest commit dates. It reports ages and authors without changing your checkout.
 
 ### Reporting and filters
 The default `graveyard` report groups detailed findings by type, with code and branch sections. Use `--group author` for author sections or `--group age` for Fresh, Ageing, Buried, and Fossil sections. Filters select findings before grouping; summaries show counts by type or author. Issue reporting is planned.
@@ -69,35 +69,35 @@ In terminal reports, a code location opens the local file when its bytes match t
 ### Saving Reports
 Any report can be saved with `--save` added to the command.
 
-Add `--save` to generate and save a new report, including a summary if you requested one. `--save latest` exports the last successfully generated report for that repository without rescanning. Use `--output ./report.md` to choose a filename and directory; otherwise Debt Watcher uses the configured `reportDirectory` and a timestamped filename. If a destination directory is missing, interactive use offers to create it or choose another; non-interactive use fails clearly. An existing file is never silently overwritten.
+Add `--save` to generate and save a new report, including a summary if you requested one. `--save latest` exports the last successfully generated report for that repository without rescanning. Use `--output ./report.md` to choose a filename and directory; otherwise Debt Finder uses the configured `reportDirectory` and a timestamped filename. If a destination directory is missing, interactive use offers to create it or choose another; non-interactive use fails clearly. An existing file is never silently overwritten.
 
 ## Set up
-**Using `npx` still requires Node.js and npm**; it does not require a separate global installation of Debt Watcher.
+**Using `npx` still requires Node.js and npm**; it does not require a separate global installation of Debt Finder.
 
 For a shared team setup, run the CLI in an interactive terminal from your repository:
 ```sh
-npx debt-watcher init
+npx debt-finder init
 ```
 
-`init` inspects the repository, explains any missing or broken setup, and asks before changing project files. It creates or reuses `debt-watcher.config.json`, records an exact development dependency in `package.json`, updates `package-lock.json`, adds a `debt-watcher` npm script, and ensures `node_modules/` is ignored. It creates a minimal `package.json` for a non-Node project if needed. Existing settings and unrelated package fields are preserved. When required integration needs manual attention, it reports that instead of replacing it silently. After setup, it opens the config in an editor. Preview the plan without changing files with `npx debt-watcher init --dry-run`.
+`init` inspects the repository, explains any missing or broken setup, and asks before changing project files. It creates or reuses `debt-finder.config.json`, records an exact development dependency in `package.json`, updates `package-lock.json`, adds a `debt-finder` npm script, and ensures `node_modules/` is ignored. It creates a minimal `package.json` for a non-Node project if needed. Existing settings and unrelated package fields are preserved. When required integration needs manual attention, it reports that instead of replacing it silently. After setup, it opens the config in an editor. Preview the plan without changing files with `npx debt-finder init --dry-run`.
 
-The repository config `debt-watcher.config.json` is required for scanning and reports. If it is missing, an interactive first report can offer the same confirmed setup. CI and other non-interactive runs require a valid existing config and installed tooling; they do not prompt or run setup.
+The repository config `debt-finder.config.json` is required for scanning and reports. If it is missing, an interactive first report can offer the same confirmed setup. CI and other non-interactive runs require a valid existing config and installed tooling; they do not prompt or run setup.
 
-After team setup, the repository also has an npm script. Use `npm run debt-watcher -- graveyard` if you prefer it to `npx debt-watcher graveyard`; the `--` passes arguments through npm to the executable.
+After team setup, the repository also has an npm script. Use `npm run debt-finder -- graveyard` if you prefer it to `npx debt-finder graveyard`; the `--` passes arguments through npm to the executable.
 
 ### Installation and team files
-You can also install first with `npm install --save-dev debt-watcher`, or install globally with `npm install -g debt-watcher`. 
+You can also install first with `npm install --save-dev debt-finder`, or install globally with `npm install -g debt-finder`.
 
-Installation alone does not set up a repository; use `debt-watcher init` (or `npx debt-watcher init`) there. A global installation uses the same repository config, and can also keep personal defaults that seed new team setups. `npx` uses a local installation when available.
+Installation alone does not set up a repository; use `debt-finder init` (or `npx debt-finder init`) there. A global installation uses the same repository config, and can also keep personal defaults that seed new team setups. `npx` uses a local installation when available.
 
-Commit `debt-watcher.config.json`, `package.json`, and `package-lock.json` so everyone shares the same setup. Keep `node_modules/` ignored. 
+Commit `debt-finder.config.json`, `package.json`, and `package-lock.json` so everyone shares the same setup. Keep `node_modules/` ignored.
 
-The config and this tool are development tooling: exclude them from production artifacts, but keep them in any CI job that runs Debt Watcher.
+The config and this tool are development tooling: exclude them from production artifacts, but keep them in any CI job that runs Debt Finder.
 
 ### Repository config and personal config defaults
-The repository config controls reports for that repository. When scanning several branches, Debt Watcher uses the config in the **currently checked-out worktree** for the whole report. A global installation can also keep a personal defaults file. Those defaults are a starting point for new repositories; they do not override an existing repository config.
+The repository config controls reports for that repository. When scanning several branches, Debt Finder uses the config in the **currently checked-out worktree** for the whole report. A global installation can also keep a personal defaults file. Those defaults are a starting point for new repositories; they do not override an existing repository config.
 
-If personal defaults exist when a new repository config is needed, setup asks whether to **copy** them or use the supplied template. The copy is independent: later changes to your personal file do not alter the team's file. You can explicitly copy settings between scopes with `config --copy-from`, which asks before replacing an existing destination. `debt-watcher --global config` edits personal defaults; ordinary `debt-watcher config` edits the repository file.
+If personal defaults exist when a new repository config is needed, setup asks whether to **copy** them or use the supplied template. The copy is independent: later changes to your personal file do not alter the team's file. You can explicitly copy settings between scopes with `config --copy-from`, which asks before replacing an existing destination. `debt-finder --global config` edits personal defaults; ordinary `debt-finder config` edits the repository file.
 
 
 ### Configuration file
@@ -126,7 +126,7 @@ Current defaults are as follows:
   "includeFresh": false,
   "showAuthors": true,
   "order": "oldnew",
-  "reportDirectory": "./debt-watcher-reports"
+  "reportDirectory": "./debt-finder-reports"
 }
 ```
 
@@ -134,23 +134,23 @@ Current defaults are as follows:
 The package supports multiple languages. Can be used using `npx` or `npm` and can be installed globally.
 
 ```sh
-npx debt-watcher init
-npx debt-watcher graveyard
+npx debt-finder init
+npx debt-finder graveyard
 ```
 
 ```sh
-npm install --save-dev debt-watcher
-npm run debt-watcher -- graveyard
+npm install --save-dev debt-finder
+npm run debt-finder -- graveyard
 ```
 
 install globally with
 ```sh
-npm install -g debt-watcher
-debt-watcher graveyard
+npm install -g debt-finder
+debt-finder graveyard
 ```
 
 ### Supported languages
-Supported source families include JavaScript/TypeScript (including JSX/TSX), Python, Ruby, Go, Rust, PHP, C/C++, CSS, HTML, and Django templates. Debt Watcher uses built-in comment scanners, with optional support from compatible language tools already installed on your machine. It does not install those tools.
+Supported source families include JavaScript/TypeScript (including JSX/TSX), Python, Ruby, Go, Rust, PHP, C/C++, CSS, HTML, and Django templates. Debt Finder uses built-in comment scanners, with optional support from compatible language tools already installed on your machine. It does not install those tools.
 
 ### Reqirements
 - Node.js 22 or newer
@@ -158,9 +158,9 @@ Supported source families include JavaScript/TypeScript (including JSX/TSX), Pyt
 - Git 2.45 or newer
 - Git repository.
 
-Commit `debt-watcher.config.json`, `package.json`, and `package-lock.json` so teammates get the same settings and package version when they run `npm install`. Keep `node_modules/` ignored. 
+Commit `debt-finder.config.json`, `package.json`, and `package-lock.json` so teammates get the same settings and package version when they run `npm install`. Keep `node_modules/` ignored.
 
-Note: The config is development tooling; exclude it and development dependencies from final production artifacts, while retaining them in any CI job that runs Debt Watcher.
+Note: The config is development tooling; exclude it and development dependencies from final production artifacts, while retaining them in any CI job that runs Debt Finder.
 
 
 ## Commands
@@ -170,24 +170,24 @@ Commands can be used in conjunction to each other and are structured.
 
 | Command | Purpose |
 | --- | --- |
-| `npx debt-watcher init` | Inspect and confirm team setup or repair |
-| `npx debt-watcher init --dry-run` | Preview setup without changing files |
-| `npx debt-watcher graveyard` | Generate the detailed code and branch report |
-| `npx debt-watcher config` | Open the repository config in an editor |
-| `npx debt-watcher --global config` | Open personal defaults in an editor |
-| `npx debt-watcher --help` | see all available flags |
+| `npx debt-finder init` | Inspect and confirm team setup or repair |
+| `npx debt-finder init --dry-run` | Preview setup without changing files |
+| `npx debt-finder graveyard` | Generate the detailed code and branch report |
+| `npx debt-finder config` | Open the repository config in an editor |
+| `npx debt-finder --global config` | Open personal defaults in an editor |
+| `npx debt-finder --help` | see all available flags |
 
 ### Configuration commands
 
 ```sh
-npx debt-watcher config --list
-npx debt-watcher config --list markers
-npx debt-watcher config --set fresh=45
-npx debt-watcher config --set fresh=30 ageing=60 buried=90
-npx debt-watcher config --add markers="TO DO,FIXME"
-npx debt-watcher config --remove markers="HACK"
-npx debt-watcher config --copy-from global
-npx debt-watcher --global config --copy-from repo
+npx debt-finder config --list
+npx debt-finder config --list markers
+npx debt-finder config --set fresh=45
+npx debt-finder config --set fresh=30 ageing=60 buried=90
+npx debt-finder config --add markers="TO DO,FIXME"
+npx debt-finder config --remove markers="HACK"
+npx debt-finder config --copy-from global
+npx debt-finder --global config --copy-from repo
 ```
 Repository settings are read from the currently checked-out worktree for the whole report, even when scanning other branches. Use `--repo ../another-project` to target another local Git repository.
 
@@ -196,25 +196,25 @@ Repository settings are read from the currently checked-out worktree for the who
 ### Report commands
 
 ```sh
-npx debt-watcher graveyard
-npx debt-watcher graveyard --group type
-npx debt-watcher graveyard --group author
-npx debt-watcher graveyard --group age
-npx debt-watcher graveyard --summary
-npx debt-watcher graveyard --summary blame
-npx debt-watcher graveyard --filter type=branches
-npx debt-watcher graveyard --filter type=code,branches
-npx debt-watcher graveyard --filter author=Alex
-npx debt-watcher graveyard --filter includefresh=true --order newold
+npx debt-finder graveyard
+npx debt-finder graveyard --group type
+npx debt-finder graveyard --group author
+npx debt-finder graveyard --group age
+npx debt-finder graveyard --summary
+npx debt-finder graveyard --summary blame
+npx debt-finder graveyard --filter type=branches
+npx debt-finder graveyard --filter type=code,branches
+npx debt-finder graveyard --filter author=Alex
+npx debt-finder graveyard --filter includefresh=true --order newold
 ```
 
 Additional CLI options will let you temporarily override the configured freshness threshold and include fresh items in the report.
 
 ```sh
-npx debt-watcher graveyard --remote --all
-npx debt-watcher graveyard --filter includefresh=true
-npx debt-watcher graveyard --fresh 45
-npx debt-watcher graveyard --fresh 38 --ageing 65 --buried 70
+npx debt-finder graveyard --remote --all
+npx debt-finder graveyard --filter includefresh=true
+npx debt-finder graveyard --fresh 45
+npx debt-finder graveyard --fresh 38 --ageing 65 --buried 70
 ```
 
 `--group` changes the **detailed report's sections**; plain `graveyard` and `--group type` are equivalent. Author sections combine code and branch findings that share an email identity and show a count above their rows. Age sections follow `--order` and omit empty categories. `--summary` groups **counts** by debt type, while `--summary blame` groups them by author without detailed rows. Do not combine `--group` with `--summary`. `--filter` **selects findings** before either report. `type` accepts `code` and `branches` today; `issues` is reserved for future support. `author` matches author names or emails, and `includefresh` accepts `true` or `false`. Repeat `--filter` for different keys, such as `--filter type=code --filter author=Alex`.
@@ -229,14 +229,14 @@ Support for selecting specific branches is also planned. The corresponding flags
 
 ### Saving reports & Compound commands
 ```sh
-npx debt-watcher graveyard --save --output ./report.md
-npx debt-watcher graveyard --summary --filter type=code --save --output ./code-summary.md
-npx debt-watcher graveyard --summary blame --filter author=Alex --save
-npx debt-watcher graveyard --save latest --output ./report-copy.md
+npx debt-finder graveyard --save --output ./report.md
+npx debt-finder graveyard --summary --filter type=code --save --output ./code-summary.md
+npx debt-finder graveyard --summary blame --filter author=Alex --save
+npx debt-finder graveyard --save latest --output ./report-copy.md
 ```
 
 ### List of all commands
-Run `npx debt-watcher --help` or a subcommand with `--help` for the complete option list.
+Run `npx debt-finder --help` or a subcommand with `--help` for the complete option list.
 
 ## How it works
 If you want to know how it works here is a little breakdown:
@@ -244,7 +244,7 @@ If you want to know how it works here is a little breakdown:
 ### How scanning works
 We have our own parsing and extraction of comments but where possible we use the language's offical tools to tokenize and extract.
 
-Debt Watcher extracts comments before matching configured markers, so marker-like text in strings is not treated as a comment. It uses these extractors:
+Debt Finder extracts comments before matching configured markers, so marker-like text in strings is not treated as a comment. It uses these extractors:
 
 | Source family | Extractor |
 | --- | --- |
@@ -255,7 +255,7 @@ Debt Watcher extracts comments before matching configured markers, so marker-lik
 | PHP and embedded HTML | PHP's `token_get_all()` when compatible; built-in fallback |
 | C/C++, Rust, CSS, HTML, Django templates | Built-in comment scanners |
 
-Official language tools are optional and must already be installed; Debt Watcher does not install them. Some valid but unsupported syntax is reported as **unscanned**, not silently counted as debt-free.
+Official language tools are optional and must already be installed; Debt Finder does not install them. Some valid but unsupported syntax is reported as **unscanned**, not silently counted as debt-free.
 
 ### High-Level System Flow
 
@@ -315,4 +315,4 @@ This release reports flagged code comments and stale branch tips. GitHub/GitLab 
 
 ## License
 
-Debt Watcher is licensed under the [BSD 3-Clause License](LICENSE). We welcome issues and pull requests in this repository; see [CONTRIBUTING.md](https://github.com/tsukuru-dev/project-debt-watcher/blob/main/CONTRIBUTING.md).
+Debt Finder is licensed under the [BSD 3-Clause License](LICENSE). We welcome issues and pull requests in this repository; see [CONTRIBUTING.md](https://github.com/tsukuru-dev/project-debt-watcher/blob/main/CONTRIBUTING.md).

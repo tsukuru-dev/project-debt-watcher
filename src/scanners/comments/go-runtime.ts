@@ -44,7 +44,7 @@ function execute(executable: string, args: string[], input: string, cwd: string,
 
 function cleanTemporaryHelper(directory: string): Promise<void> {
   const base = resolve(tmpdir()), target = resolve(directory);
-  if (!target.startsWith(base + sep) || !target.slice(base.length + 1).startsWith("debt-watcher-go-")) {
+  if (!target.startsWith(base + sep) || !target.slice(base.length + 1).startsWith("debt-finder-go-")) {
     return Promise.reject(new Error("Refusing to remove a Go helper outside its temporary directory."));
   }
   return rm(target, { recursive: true, force: true });
@@ -57,7 +57,7 @@ export async function prepareGo(executable: string, program: string,
     || /(?:^|[\\/])WindowsApps(?:[\\/]|$)/iu.test(executable)) {
     throw new Error("Go must be an absolute executable path, not a script or Store alias.");
   }
-  const directory = await mkdtemp(join(tmpdir(), "debt-watcher-go-"));
+  const directory = await mkdtemp(join(tmpdir(), "debt-finder-go-"));
   let closed = false;
   try {
     const env = { ...environment };

@@ -84,7 +84,7 @@ export async function inspectSetup(repo: string | undefined, context: GitContext
     inspectFile(join(repositoryRoot, "package.json")),
     inspectFile(join(repositoryRoot, "package-lock.json")),
     inspectFile(join(repositoryRoot, ".gitignore")),
-    inspectFile(join(repositoryRoot, "node_modules", "debt-watcher", "package.json")),
+    inspectFile(join(repositoryRoot, "node_modules", "debt-finder", "package.json")),
     inspectFile(join(repositoryRoot, "npm-shrinkwrap.json")),
   ]);
   if (config.state === "missing") {
@@ -123,36 +123,36 @@ export async function inspectSetup(repo: string | undefined, context: GitContext
   }
   if (pkg) {
     const scripts = object(pkg.scripts) ? pkg.scripts : {};
-    const script = scripts["debt-watcher"];
-    add("script", script === undefined ? "missing" : script === "debt-watcher" ? "present" : "conflict",
-      script === undefined ? 'Add npm script "debt-watcher": "debt-watcher".'
-        : script === "debt-watcher" ? "Keep the matching debt-watcher npm script."
-          : "An existing debt-watcher npm script differs. Ask before replacing it; preserve other scripts.");
+    const script = scripts["debt-finder"];
+    add("script", script === undefined ? "missing" : script === "debt-finder" ? "present" : "conflict",
+      script === undefined ? 'Add npm script "debt-finder": "debt-finder".'
+        : script === "debt-finder" ? "Keep the matching debt-finder npm script."
+          : "An existing debt-finder npm script differs. Ask before replacing it; preserve other scripts.");
     const declarations = ["devDependencies", "dependencies", "optionalDependencies", "peerDependencies"]
-      .filter((field) => object(pkg[field]) && Object.hasOwn(pkg[field], "debt-watcher"));
-    if (!declarations.length) add("dependency", "missing", "Use npm to add debt-watcher as a local development dependency and update the lockfile.");
+      .filter((field) => object(pkg[field]) && Object.hasOwn(pkg[field], "debt-finder"));
+    if (!declarations.length) add("dependency", "missing", "Use npm to add debt-finder as a local development dependency and update the lockfile.");
     else if (declarations.length === 1 && declarations[0] === "devDependencies") {
-      add("dependency", "present", "Debt Watcher is declared in devDependencies. npm must verify compatibility before reusing an installation.");
+      add("dependency", "present", "Debt Finder is declared in devDependencies. npm must verify compatibility before reusing an installation.");
     } else {
-      add("dependency", "review", "Debt Watcher is declared in " + declarations.join(", ") + ". Preserve its classification; review before any npm changes.");
+      add("dependency", "review", "Debt Finder is declared in " + declarations.join(", ") + ". Preserve its classification; review before any npm changes.");
     }
     if (pkg.workspaces !== undefined || (typeof pkg.packageManager === "string" && !pkg.packageManager.startsWith("npm@"))) {
       add("package-workflow", "review", "Workspace or non-npm package-manager settings exist. Resolve the installation target/workflow before applying setup.");
     }
-    if (pkg.name === "debt-watcher") add("package-self", "conflict", "This is the debt-watcher package itself. Do not install it as its own dependency; use a separate consumer repository.");
+    if (pkg.name === "debt-finder") add("package-self", "conflict", "This is the debt-finder package itself. Do not install it as its own dependency; use a separate consumer repository.");
   }
 
   if (installed.state === "missing") {
-    add("installation", "missing", "No repository-local Debt Watcher package was found. npm will need to install it; a global copy is not team integration.");
+    add("installation", "missing", "No repository-local Debt Finder package was found. npm will need to install it; a global copy is not team integration.");
   } else if (installed.state === "error") {
-    add("installation", "conflict", "Local Debt Watcher package: " + installed.message);
+    add("installation", "conflict", "Local Debt Finder package: " + installed.message);
   } else {
     try {
       const local = jsonObject(installed.text);
-      if (local.name !== "debt-watcher" || typeof local.version !== "string" || !local.version.trim()) throw new Error("Missing package identity/version.");
-      add("installation", "present", "Local Debt Watcher package metadata is present (version " + local.version + "). npm must verify its integrity and compatibility before reuse.");
+      if (local.name !== "debt-finder" || typeof local.version !== "string" || !local.version.trim()) throw new Error("Missing package identity/version.");
+      add("installation", "present", "Local Debt Finder package metadata is present (version " + local.version + "). npm must verify its integrity and compatibility before reuse.");
     } catch {
-      add("installation", "conflict", "Local Debt Watcher package metadata is invalid. Review the installation before repair.");
+      add("installation", "conflict", "Local Debt Finder package metadata is invalid. Review the installation before repair.");
     }
   }
   if (lock.state === "missing") add("lockfile", "missing", "Let npm generate package-lock.json; do not construct it manually.");
@@ -162,11 +162,11 @@ export async function inspectSetup(repo: string | undefined, context: GitContext
       const saved = jsonObject(lock.text);
       if (![1, 2, 3].includes(saved.lockfileVersion as number)) throw new Error("Unrecognised lockfileVersion.");
       const records = object(saved.packages) ? saved.packages : undefined;
-      const entry = records ? records["node_modules/debt-watcher"]
-        : object(saved.dependencies) ? saved.dependencies["debt-watcher"] : undefined;
+      const entry = records ? records["node_modules/debt-finder"]
+        : object(saved.dependencies) ? saved.dependencies["debt-finder"] : undefined;
       add("lockfile", object(entry) ? "present" : "missing", object(entry)
-        ? "package-lock.json records Debt Watcher. Let npm verify consistency with package.json before reuse."
-        : "package-lock.json has no Debt Watcher entry. Let npm update it, preserving other dependencies.");
+        ? "package-lock.json records Debt Finder. Let npm verify consistency with package.json before reuse."
+        : "package-lock.json has no Debt Finder entry. Let npm update it, preserving other dependencies.");
     } catch {
       add("lockfile", "conflict", "package-lock.json is invalid or uses an unsupported format. Preserve it for review; never hand-repair lock entries.");
     }
@@ -177,7 +177,7 @@ export async function inspectSetup(repo: string | undefined, context: GitContext
       add("package-manager-lock", "review", path + " exists or cannot be read. Resolve the package-manager workflow before npm setup.");
     }
   }
-  for (const path of ["node_modules", "node_modules/debt-watcher", "node_modules/.bin"]) {
+  for (const path of ["node_modules", "node_modules/debt-finder", "node_modules/.bin"]) {
     try {
       const stats = await lstat(join(repositoryRoot, path));
       if (!stats.isDirectory() || stats.isSymbolicLink()) {

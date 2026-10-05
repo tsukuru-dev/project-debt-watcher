@@ -12,7 +12,7 @@ begin
   source.each_line { |line| starts << starts[-1] + line.bytesize }
   comments = []
   block = nil
-  Ripper.lex(source, '<debt-watcher>', 1, raise_errors: true).each do |position, event, text, state|
+  Ripper.lex(source, '<debt-finder>', 1, raise_errors: true).each do |position, event, text, state|
     offset = starts.fetch(position[0] - 1) + position[1]
     finish = offset + text.bytesize
     case event

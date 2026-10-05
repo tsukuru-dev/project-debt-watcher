@@ -24,7 +24,7 @@ export async function isGlobalInstallation(packageRoot: string, context: GitCont
       return result.stdout.trim();
     })();
     if (!root) return false;
-    return await realpath(packageRoot) === await realpath(join(root, "debt-watcher"));
+    return await realpath(packageRoot) === await realpath(join(root, "debt-finder"));
   } catch {
     // Installation detection must not prevent use of an already configured repository.
     return false;

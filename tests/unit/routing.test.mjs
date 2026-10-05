@@ -73,7 +73,7 @@ for (const args of [[], ["--help"], ["-h"], ["--version"], ["-V"],
     assert.equal(result.stderr, "");
     assert.deepEqual(result.calls, []);
     assert.match(result.stdout, args.some((arg) => ["--version", "-V"].includes(arg))
-      ? /^1\.2\.3\n$/ : /Usage: debt-watcher/);
+      ? /^1\.2\.3\n$/ : /Usage: debt-finder/);
   });
 }
 
@@ -159,7 +159,7 @@ test("scope options without a command show usage and fail without dispatch", asy
   assert.equal(result.status, 1);
   assert.deepEqual(result.calls, []);
   assert.equal(result.stdout, "");
-  assert.match(result.stderr, /Usage: debt-watcher/);
+  assert.match(result.stderr, /Usage: debt-finder/);
 });
 
 test("waits for async handlers and reports their failures without a stack trace", async () => {

@@ -12,7 +12,7 @@ export interface RubyExtractorOptions {
 }
 export interface RubyCommentExtractor {
   backend: { kind: "official"; name: "ruby-ripper"; version: string; executable: string }
-    | { kind: "builtin"; name: "debt-watcher-ruby"; version: "1"; reason: string };
+    | { kind: "builtin"; name: "debt-finder-ruby"; version: "1"; reason: string };
   extract(source: string): Promise<CommentExtraction>;
 }
 function response(output: string): Record<string, unknown> {
@@ -117,6 +117,6 @@ export async function createRubyCommentExtractor(options: RubyExtractorOptions =
   const reason = mode === "builtin" ? "Built-in extraction was explicitly selected."
     : failures.length ? failures.join("; ") : "No Ruby executable was found on PATH.";
   if (mode === "official") throw new Error(`Official Ruby extraction is unavailable. ${reason}`);
-  return { backend: { kind: "builtin", name: "debt-watcher-ruby", version: "1", reason },
+  return { backend: { kind: "builtin", name: "debt-finder-ruby", version: "1", reason },
     async extract(source) { checkSize(source); return extractRubyComments(source); } };
 }

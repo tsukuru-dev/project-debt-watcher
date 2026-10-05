@@ -6,11 +6,11 @@ import { basename, dirname, join, resolve } from "node:path";
 import { runCli } from "../../dist/program.js";
 import { userConfigDirectory } from "../../dist/storage/paths.js";
 
-export const template = JSON.parse(readFileSync(new URL("../../templates/debt-watcher.config.json", import.meta.url), "utf8"));
-export const configFilename = "debt-watcher.config.json";
+export const template = JSON.parse(readFileSync(new URL("../../templates/debt-finder.config.json", import.meta.url), "utf8"));
+export const configFilename = "debt-finder.config.json";
 
 export function fixture(t) {
-  const root = realpathSync.native(mkdtempSync(join(tmpdir(), "debt-watcher-config-")));
+  const root = realpathSync.native(mkdtempSync(join(tmpdir(), "debt-finder-config-")));
   const home = join(root, "home");
   mkdirSync(home);
   const env = { ...process.env };
@@ -26,14 +26,14 @@ export function fixture(t) {
   t.after(() => {
     // Only remove this test's newly created directory, never an unchecked computed path.
     assert.equal(dirname(resolve(root)), realpathSync.native(tmpdir()));
-    assert.ok(basename(root).startsWith("debt-watcher-config-"));
+    assert.ok(basename(root).startsWith("debt-finder-config-"));
     rmSync(root, { recursive: true, force: true });
   });
 
   function git(cwd, args) {
     const result = spawnSync("git", [
       "-c", "core.hooksPath=", "-c", "commit.gpgSign=false", "-c", "core.autocrlf=false",
-      "-c", "user.name=Debt Watcher tests", "-c", "user.email=tests@example.invalid", ...args,
+      "-c", "user.name=Debt Finder tests", "-c", "user.email=tests@example.invalid", ...args,
     ], { cwd, env, encoding: "utf8", windowsHide: true });
     assert.ifError(result.error);
     assert.equal(result.status, 0, result.stderr);

@@ -55,7 +55,7 @@ test("graveyard reports committed code across local or remote refs with temporar
   assert.equal(byAuthor.status, 0, byAuthor.stderr);
   assert.match(byAuthor.stdout, /🪦  PROJECT GRAVEYARD — BY AUTHOR/);
   assert.match(byAuthor.stdout, /DEMO OLDER <OLDER@EXAMPLE\.TEST> \(1\)/);
-  assert.match(byAuthor.stdout, /DEBT WATCHER TESTS <TESTS@EXAMPLE\.INVALID> \(2\)/);
+  assert.match(byAuthor.stdout, /DEBT FINDER TESTS <TESTS@EXAMPLE\.INVALID> \(2\)/);
   assert.match(byAuthor.stdout, /Group: author\nFilters: includefresh=true/);
   assert.match(byAuthor.stdout, /Oldest: Demo Older <older@example\.test> · CODE · [\d,]+d · TODO/);
   assert.match(byAuthor.stdout, /[\d,]+d\s+CODE TODO/);
@@ -103,7 +103,7 @@ test("graveyard reports committed code across local or remote refs with temporar
   assert.match(blameSummary.stdout, /SUMMARY BY AUTHOR/);
   assert.match(blameSummary.stdout, /TOTAL 3/);
   assert.match(blameSummary.stdout, /Demo Older <older@example\.test>\s+1\s+·/);
-  assert.match(blameSummary.stdout, /Debt Watcher tests <tests@example\.invalid>\s+2\s+·/);
+  assert.match(blameSummary.stdout, /Debt Finder tests <tests@example\.invalid>\s+2\s+·/);
   assert.match(blameSummary.stdout, /Oldest: Demo Older <older@example\.test> · CODE · [\d,]+d · TODO/);
   const savedBlame = await invoke(["--summary", "blame", "--save", "--output", "./blame.md",
     "--repo", relative(f.root, repo)], f.root);
@@ -163,12 +163,12 @@ test("graveyard reports committed code across local or remote refs with temporar
   const missing = await invoke(["--save"]);
   assert.equal(missing.status, 1);
   assert.match(missing.stderr, /Report directory does not exist/);
-  assert.ok(!existsSync(join(repo, "debt-watcher-reports")));
+  assert.ok(!existsSync(join(repo, "debt-finder-reports")));
   const recovered = await invoke(["--save", "latest", "--output", "./recovered.md",
     "--repo", relative(f.root, repo)], f.root);
   assert.equal(recovered.status, 0, recovered.stderr);
   assert.match(readFileSync(join(f.root, "recovered.md"), "utf8"), /Code comments: 1/);
-  mkdirSync(join(repo, "debt-watcher-reports"));
+  mkdirSync(join(repo, "debt-finder-reports"));
   const configured = await invoke(["--save"]);
   assert.equal(configured.status, 0, configured.stderr);
   assert.match(configured.stdout, /Saved report:/);
@@ -275,16 +275,16 @@ test("graveyard links exact code lines and branch commits for matching hosted re
     { cwd: repo, env: { ...f.env, GIT_AUTHOR_DATE: "2020-01-01T12:00:00Z",
       GIT_COMMITTER_DATE: "2020-01-01T12:00:00Z" } });
   const commit = f.git(repo, ["rev-parse", "HEAD"]);
-  f.git(repo, ["remote", "add", "origin", "git@github.com:example/debt-watcher.git"]);
+  f.git(repo, ["remote", "add", "origin", "git@github.com:example/debt-finder.git"]);
   const local = await f.invoke(["graveyard", "--save", "--output", "./linked.md"], repo,
     { ...f.env, TERM_PROGRAM: "vscode" });
   assert.equal(local.status, 0, local.stderr);
   const editorLink = `vscode://file${pathToFileURL(join(repo, "old code.js")).pathname}:1:1`;
   assert.ok(local.stdout.includes(`\u001b]8;;${editorLink}\u0007main:old code.js:1\u001b]8;;\u0007`));
-  assert.ok(local.stdout.includes(`\u001b]8;;https://github.com/example/debt-watcher/commit/${commit}\u0007${commit.slice(0, 10)}\u001b]8;;\u0007`));
+  assert.ok(local.stdout.includes(`\u001b]8;;https://github.com/example/debt-finder/commit/${commit}\u0007${commit.slice(0, 10)}\u001b]8;;\u0007`));
   const markdown = readFileSync(join(repo, "linked.md"), "utf8");
-  assert.ok(markdown.includes(`[main:old code.js:1](https://github.com/example/debt-watcher/blob/${commit}/old%20code.js#L1)`));
-  assert.ok(markdown.includes(`[${commit}](https://github.com/example/debt-watcher/commit/${commit})`));
+  assert.ok(markdown.includes(`[main:old code.js:1](https://github.com/example/debt-finder/blob/${commit}/old%20code.js#L1)`));
+  assert.ok(markdown.includes(`[${commit}](https://github.com/example/debt-finder/commit/${commit})`));
   const latest = await f.invoke(["graveyard", "--save", "latest", "--output", "./linked-copy.md"], repo);
   assert.equal(latest.status, 0, latest.stderr);
   assert.equal(readFileSync(join(repo, "linked-copy.md"), "utf8"), markdown);
@@ -296,7 +296,7 @@ test("graveyard links exact code lines and branch commits for matching hosted re
   assert.equal(remote.status, 0, remote.stderr);
   assert.ok(remote.stdout.includes(`https://gitlab.example.test/group/project/-/blob/${commit}/old%20code.js#L1`));
   assert.ok(remote.stdout.includes(`https://gitlab.example.test/group/project/-/commit/${commit}`));
-  assert.ok(!remote.stdout.includes("https://github.com/example/debt-watcher/blob/"));
+  assert.ok(!remote.stdout.includes("https://github.com/example/debt-finder/blob/"));
 
   f.git(repo, ["remote", "set-url", "origin", "https://example.test/team/project.git"]);
   const unsupported = await f.invoke(["graveyard"], repo);

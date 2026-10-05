@@ -32,7 +32,7 @@ func main() {
     if err := json.Unmarshal(input, &req); err != nil { panic(err) }
     src := []byte(req.Source)
     files := token.NewFileSet()
-    file := files.AddFile("<debt-watcher>", -1, len(src))
+    file := files.AddFile("<debt-finder>", -1, len(src))
     var lexer scanner.Scanner
     lexer.Init(file, src, func(pos token.Position, msg string) {
         if out.Status == "ok" {

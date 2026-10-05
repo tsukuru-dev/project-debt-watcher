@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { ageInDays, categoryForAge, resolveAgeThresholds } from "../../dist/reports/ages.js";
 import { buildCodeFindings } from "../../dist/reports/build.js";
 
-const template = JSON.parse(readFileSync(new URL("../../templates/debt-watcher.config.json", import.meta.url), "utf8"));
+const template = JSON.parse(readFileSync(new URL("../../templates/debt-finder.config.json", import.meta.url), "utf8"));
 const { ageing: _ageing, buried: _buried, ...automatic } = template;
 
 test("age counts complete elapsed days and clamps future dates to zero", () => {

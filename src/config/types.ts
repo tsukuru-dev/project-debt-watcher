@@ -1,4 +1,4 @@
-export const CONFIG_FILENAME = "debt-watcher.config.json";
+export const CONFIG_FILENAME = "debt-finder.config.json";
 
 export const CONFIG_KEYS = [
   "fresh", "markers", "includeFresh", "showAuthors", "order", "reportDirectory",
@@ -21,10 +21,10 @@ type AgeBands =
   | { ageing?: never; buried?: never }
   | { ageing: number; buried: number };
 
-export type DebtWatcherConfig = SharedSettings & AgeBands;
+export type DebtFinderConfig = SharedSettings & AgeBands;
 
 /** Preserve optional document metadata separately from scanning settings. */
-export type ConfigurationDocument = DebtWatcherConfig & {
+export type ConfigurationDocument = DebtFinderConfig & {
   $schema?: string;
   metadata?: Record<string, unknown>;
 };

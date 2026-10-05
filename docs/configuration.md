@@ -1,8 +1,8 @@
 # Configuration
 
-The shared filename is `debt-watcher.config.json`, stored at the target Git worktree root and committed to Git. The checked-out branch's saved working-tree file governs the entire report, including scans of other branches. Configuration is read again on each invocation, so uncommitted edits and branch changes take effect immediately.
+The shared filename is `debt-finder.config.json`, stored at the target Git worktree root and committed to Git. The checked-out branch's saved working-tree file governs the entire report, including scans of other branches. Configuration is read again on each invocation, so uncommitted edits and branch changes take effect immediately.
 
-The supplied `templates/debt-watcher.config.json` starts with fixed upper bounds of **30 fresh, 60 ageing, and 90 buried days**. Standard JSON does not allow comments, so its `metadata.ageBandsNote` explains the labels within the file without introducing a `fossil` setting; metadata is informational and does not affect scanning. Existing files keep their saved thresholds; loading does not merge in template or personal defaults.
+The supplied `templates/debt-finder.config.json` starts with fixed upper bounds of **30 fresh, 60 ageing, and 90 buried days**. Standard JSON does not allow comments, so its `metadata.ageBandsNote` explains the labels within the file without introducing a `fossil` setting; metadata is informational and does not affect scanning. Existing files keep their saved thresholds; loading does not merge in template or personal defaults.
 
 | Setting | Required value / initial template |
 | --- | --- |
@@ -11,7 +11,7 @@ The supplied `templates/debt-watcher.config.json` starts with fixed upper bounds
 | `includeFresh` | Boolean; initially `false` |
 | `showAuthors` | Boolean; initially `true` |
 | `order` | `oldnew` or `newold`; initially `oldnew` |
-| `reportDirectory` | Non-empty path string; initially `./debt-watcher-reports` |
+| `reportDirectory` | Non-empty path string; initially `./debt-finder-reports` |
 | `ageing`, `buried` | Initially `60` and `90`; inclusive upper bounds with `fresh < ageing < buried`. Omit both to calculate bands automatically |
 
 Age categories use inclusive upper bounds: days 0–30 are fresh, 31–60 ageing, 61–90 buried, and 91 or more fossil with the supplied template. Fossil has no numeric setting. When both `ageing` and `buried` are absent, the non-fresh age range is divided into three automatic bands. `includeFresh` independently controls whether fresh items appear in reports.
@@ -23,33 +23,33 @@ Unknown configuration keys are rejected. Optional `$schema` (a string) and `meta
 ## Reading saved settings
 
 ```sh
-debt-watcher config --list
-debt-watcher config --list markers
-debt-watcher config --list fresh
-debt-watcher config --list --repo "../another-project"
-debt-watcher --global config --list
+debt-finder config --list
+debt-finder config --list markers
+debt-finder config --list fresh
+debt-finder config --list --repo "../another-project"
+debt-finder --global config --list
 ```
 
 Each listing prints the selected file's absolute path. Listing is read-only: it does not change settings, create files or directories, open editors, or run team setup. Run from a repository subfolder or use `--repo` relative to the invocation's working directory; the loader locates that worktree's root rather than searching ancestor configuration files. Linked worktrees use their own config.
 
 Missing files, invalid JSON, invalid settings, and file-access errors fail with the selected path and a clear explanation. Missing repository configuration never falls back to another branch or personal defaults. Saved values must provide all required settings.
 
-Use `debt-watcher init` for confirmed team setup, prepare a repository configuration manually from the supplied template, or explicitly copy existing personal settings as described below. See `installation.md` for development-build installation limitations. No actual repository or personal configuration is created just by building the package.
+Use `debt-finder init` for confirmed team setup, prepare a repository configuration manually from the supplied template, or explicitly copy existing personal settings as described below. See `installation.md` for development-build installation limitations. No actual repository or personal configuration is created just by building the package.
 
 ## Editing saved settings
 
 Choose one action per invocation:
 
 ```sh
-debt-watcher config --set fresh=60
-debt-watcher config --set includeFresh=true showAuthors=false order=newold
-debt-watcher config --set fresh=30 ageing=60 buried=120
-debt-watcher config --set markers="TODO,FIXME"
-debt-watcher config --add markers="TO DO,FIXME"
-debt-watcher config --remove markers="HACK"
-debt-watcher config --set reportDirectory="./team reports"
-debt-watcher config --set fresh=45 --repo "../another-project"
-debt-watcher --global config --set fresh=60
+debt-finder config --set fresh=60
+debt-finder config --set includeFresh=true showAuthors=false order=newold
+debt-finder config --set fresh=30 ageing=60 buried=120
+debt-finder config --set markers="TODO,FIXME"
+debt-finder config --add markers="TO DO,FIXME"
+debt-finder config --remove markers="HACK"
+debt-finder config --set reportDirectory="./team reports"
+debt-finder config --set fresh=45 --repo "../another-project"
+debt-finder --global config --set fresh=60
 ```
 
 `--set` replaces the named settings. Multiple assignments are merged and validated together before writing; an invalid result leaves the file unchanged. Setting `fresh` without an explicit `ageing` or `buried` assignment removes saved custom bands and selects automatic bands. Explicit band assignments merge with saved bands and must satisfy `fresh < ageing < buried`.
@@ -63,10 +63,10 @@ Repository setting edits require an existing, valid config at the selected workt
 ## Copying settings
 
 ```sh
-debt-watcher --global config --copy-from repo
-debt-watcher --global config --copy-from repo --repo "../source-project"
-debt-watcher config --copy-from global
-debt-watcher config --copy-from global --repo "../destination-project"
+debt-finder --global config --copy-from repo
+debt-finder --global config --copy-from repo --repo "../source-project"
+debt-finder config --copy-from global
+debt-finder config --copy-from global --repo "../destination-project"
 ```
 
 Copying validates the source first, shows both paths, and replaces all supported settings, including marker lists and custom age bands. The destination keeps its own `$schema` and `metadata`; source metadata never crosses scopes. Relative report-directory paths stay relative. Absolute paths produce a notice that they may be specific to this machine. Copies never create report directories.
@@ -78,9 +78,9 @@ Missing or invalid sources are errors and are never manufactured from defaults. 
 ## Opening in an editor
 
 ```sh
-debt-watcher config
-debt-watcher config --repo "../another-project"
-debt-watcher --global config
+debt-finder config
+debt-finder config --repo "../another-project"
+debt-finder --global config
 ```
 
 With no action, `config` opens the selected file in an interactive terminal. Repository opening requires an existing file. Personal opening creates a missing file from the supplied template. Existing files are preserved; invalid JSON or settings are reported and opened for manual repair.
@@ -102,9 +102,9 @@ The CLI displays the full config path. If launching the editor fails, it returns
 
 Personal defaults use the same format and filename:
 
-- Windows: `%APPDATA%/debt-watcher/debt-watcher.config.json`, with the user's `AppData/Roaming` directory as fallback.
-- macOS: `~/Library/Application Support/debt-watcher/debt-watcher.config.json`.
-- Linux and other Unix systems: `$XDG_CONFIG_HOME/debt-watcher/debt-watcher.config.json`, or `~/.config/debt-watcher/debt-watcher.config.json` when the environment value is absent or relative.
+- Windows: `%APPDATA%/debt-finder/debt-finder.config.json`, with the user's `AppData/Roaming` directory as fallback.
+- macOS: `~/Library/Application Support/debt-finder/debt-finder.config.json`.
+- Linux and other Unix systems: `$XDG_CONFIG_HOME/debt-finder/debt-finder.config.json`, or `~/.config/debt-finder/debt-finder.config.json` when the environment value is absent or relative.
 
 Personal configuration actions need no repository or Git executable except when copying from a repository. An explicit `--global config --set`, `--add`, or `--remove` creates missing personal defaults from the supplied template after validating the complete requested change. Interactive `--global config` also initialises them before opening. Listing remains read-only and does not initialise missing defaults. Invalid existing personal files are preserved and reported.
 

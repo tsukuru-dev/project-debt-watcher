@@ -49,7 +49,7 @@ export async function saveMarkdownReport(markdown: string, options: ExportOption
   const configured = isAbsolute(options.configuredDirectory)
     ? resolve(options.configuredDirectory) : resolve(options.repositoryRoot, options.configuredDirectory);
   const timestamp = options.generatedAt.replace(/[:.]/gu, "-");
-  const name = options.output === undefined ? `debt-watcher-report-${timestamp}.md` : basename(options.output);
+  const name = options.output === undefined ? `debt-finder-report-${timestamp}.md` : basename(options.output);
   let directory = options.output === undefined ? configured
     : dirname(resolve(options.invocationDirectory, options.output));
   let alternateDirectory: string | undefined;

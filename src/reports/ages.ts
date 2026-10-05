@@ -1,4 +1,4 @@
-import type { DebtWatcherConfig } from "../config/types.js";
+import type { DebtFinderConfig } from "../config/types.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -20,7 +20,7 @@ export function ageInDays(authoredAt: string, asOf: Date): number {
 }
 
 /** Automatic bands divide the non-fresh range through the oldest finding into thirds. */
-export function resolveAgeThresholds(config: DebtWatcherConfig, oldestAge: number): AgeThresholds {
+export function resolveAgeThresholds(config: DebtFinderConfig, oldestAge: number): AgeThresholds {
   if (!Number.isSafeInteger(oldestAge) || oldestAge < 0) throw new Error("Oldest finding age must be a non-negative whole number.");
   if (config.ageing !== undefined && config.buried !== undefined) {
     return { mode: "custom", fresh: config.fresh, ageing: config.ageing, buried: config.buried };

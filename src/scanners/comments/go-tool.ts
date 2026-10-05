@@ -12,7 +12,7 @@ export interface GoExtractorOptions {
 }
 export interface GoCommentExtractor {
   backend: { kind: "official"; name: "go-scanner"; version: string; executable: string }
-    | { kind: "builtin"; name: "debt-watcher-go"; version: "1"; reason: string };
+    | { kind: "builtin"; name: "debt-finder-go"; version: "1"; reason: string };
   extract(source: string): Promise<CommentExtraction>;
   /** Release the temporary official helper and its isolated compile cache. */
   close(): Promise<void>;
@@ -138,6 +138,6 @@ export async function createGoCommentExtractor(options: GoExtractorOptions = {},
   const reason = mode === "builtin" ? "Built-in extraction was explicitly selected."
     : failures.length ? failures.join("; ") : "No Go executable was found on PATH.";
   if (mode === "official") throw new Error(`Official Go extraction is unavailable. ${reason}`);
-  return { backend: { kind: "builtin", name: "debt-watcher-go", version: "1", reason },
+  return { backend: { kind: "builtin", name: "debt-finder-go", version: "1", reason },
     async extract(source) { checkSize(source); return extractGoComments(source); }, async close() {} };
 }

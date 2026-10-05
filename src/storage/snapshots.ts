@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { lstat, mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { ReportFilters } from "../commands/arguments.js";
-import type { DebtWatcherConfig } from "../config/types.js";
+import type { DebtFinderConfig } from "../config/types.js";
 import { validateConfiguration } from "../config/validate.js";
 import { userConfigDirectory, type UserPathOptions } from "./paths.js";
 
@@ -16,7 +16,7 @@ export interface LatestReportSnapshot {
   scope: "local" | "remote";
   mode: "detailed" | "group-author" | "group-age" | "types" | "blame";
   scannedBranches: Array<{ ref: string; commitId: string }>;
-  settings: DebtWatcherConfig;
+  settings: DebtFinderConfig;
   filters: ReportFilters & { includeFresh: boolean };
   order: "oldnew" | "newold";
   /** Chosen at generation time; older snapshots may not have this field. */

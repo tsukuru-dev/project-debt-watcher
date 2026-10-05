@@ -1,6 +1,6 @@
-# Contributing to Project Debt Watcher
+# Contributing to Project Debt Finder
 
-Thanks for helping make Debt Watcher better. We would rather improve this project together than maintain several separate versions. Please bring bug reports, ideas, and code changes to this repository.
+Thanks for helping make Debt Finder better. We would rather improve this project together than maintain several separate versions. Please bring bug reports, ideas, and code changes to this repository.
 
 GitHub calls code submissions **pull requests**; on GitLab, the equivalent is a **merge request**.
 
@@ -18,10 +18,10 @@ For a larger behaviour change or a new dependency, discuss the approach in an is
 4. Run `npm test` before submitting. It builds the TypeScript project and runs the test suite. Optional language-tool tests may skip if their official tool is not installed; do not install one just to satisfy a skipped test.
 5. Open a [pull request](https://github.com/tsukuru-dev/project-debt-watcher/pulls). Explain the problem, what changed, how you checked it, and link any related issue.
 
-Debt Watcher favours built-in comment scanners and compatible **official** language tools that are already installed. Please discuss any proposed third-party parser or runtime dependency before adding it. Scanners should report files they cannot safely understand as unscanned, rather than claiming those files contain no debt.
+Debt Finder favours built-in comment scanners and compatible **official** language tools that are already installed. Please discuss any proposed third-party parser or runtime dependency before adding it. Scanners should report files they cannot safely understand as unscanned, rather than claiming those files contain no debt.
 
 Please avoid committing generated `dist/`, `node_modules/`, test output, secrets, or unrelated formatting changes.
 
 ## Review and licensing
 
-We may ask for changes before merging, and an issue or pull request does not guarantee that a feature will be accepted. Debt Watcher is licensed under the [BSD 3-Clause License](LICENSE). That license permits redistribution of modified versions under its conditions; this guide asks contributors to bring improvements here, but does not require them to do so.
+We may ask for changes before merging, and an issue or pull request does not guarantee that a feature will be accepted. Debt Finder is licensed under the [BSD 3-Clause License](LICENSE). That license permits redistribution of modified versions under its conditions; this guide asks contributors to bring improvements here, but does not require them to do so.

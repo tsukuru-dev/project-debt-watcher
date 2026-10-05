@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { resolveReportSettings } from "../../dist/reports/settings.js";
 
-const saved = JSON.parse(readFileSync(new URL("../../templates/debt-watcher.config.json", import.meta.url), "utf8"));
+const saved = JSON.parse(readFileSync(new URL("../../templates/debt-finder.config.json", import.meta.url), "utf8"));
 
 test("fresh-only override selects automatic bands without editing saved settings", () => {
   const effective = resolveReportSettings(saved, { fresh: 45, markers: ["TO DO"],

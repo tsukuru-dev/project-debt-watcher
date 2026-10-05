@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { applyConfigurationEdit, parseConfigurationEdit } from "../../dist/config/actions.js";
 
-const template = JSON.parse(readFileSync(new URL("../../templates/debt-watcher.config.json", import.meta.url), "utf8"));
+const template = JSON.parse(readFileSync(new URL("../../templates/debt-finder.config.json", import.meta.url), "utf8"));
 const { ageing: _ageing, buried: _buried, ...automatic } = template;
 const custom = { ...template, ageing: 60, buried: 120 };
 const set = (document, ...assignments) => applyConfigurationEdit(document,

@@ -10,13 +10,13 @@ const cli = fileURLToPath(new URL("../../dist/cli.js", import.meta.url));
 const manifest = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
 
 test("compiled CLI works outside a Git repository and creates no user or project files", () => {
-  const directory = mkdtempSync(join(tmpdir(), "debt-watcher-cli-"));
+  const directory = mkdtempSync(join(tmpdir(), "debt-finder-cli-"));
   try {
     const env = { ...process.env, CI: "true", HOME: directory, USERPROFILE: directory,
       APPDATA: directory, LOCALAPPDATA: directory, XDG_CONFIG_HOME: directory,
       XDG_CACHE_HOME: directory, XDG_STATE_HOME: directory };
     const cases = [
-      [[], 0, /Usage: debt-watcher/],
+      [[], 0, /Usage: debt-finder/],
       [["--help"], 0, /graveyard/],
       [["--version"], 0, manifest.version],
       [["graveyard", "--help"], 0, /--summary/],
@@ -40,7 +40,7 @@ test("compiled CLI works outside a Git repository and creates no user or project
     }
   } finally {
     assert.equal(dirname(resolve(directory)), resolve(tmpdir()));
-    assert.ok(basename(directory).startsWith("debt-watcher-cli-"));
+    assert.ok(basename(directory).startsWith("debt-finder-cli-"));
     rmSync(directory, { recursive: true, force: true });
   }
 });

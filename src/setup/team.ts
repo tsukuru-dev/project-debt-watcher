@@ -35,34 +35,34 @@ export function printInspection(inspection: SetupInspection, write: (text: strin
 
 /** npm validates installed versions; we also require a matching lock entry and usable CLI files. */
 export async function reusableInstallation(root: string, pkg: Record<string, unknown>, npm: NpmRunner, context: GitContext): Promise<boolean> {
-  const localText = await readSetupFile(join(root, "node_modules", "debt-watcher", "package.json"));
+  const localText = await readSetupFile(join(root, "node_modules", "debt-finder", "package.json"));
   const lockText = await readSetupFile(join(root, "package-lock.json"));
   if (!localText || !lockText) return false;
   const local = parsePackageObject(localText);
   const lock = parsePackageObject(lockText);
   const records = isRecord(lock.packages) ? lock.packages : {};
-  const locked = records["node_modules/debt-watcher"];
+  const locked = records["node_modules/debt-finder"];
   const lockedRoot = records[""];
-  if (local.name !== "debt-watcher" || typeof local.version !== "string" || !isRecord(locked)
+  if (local.name !== "debt-finder" || typeof local.version !== "string" || !isRecord(locked)
     || locked.version !== local.version || !isRecord(lockedRoot)) return false;
   for (const field of ["dependencies", "devDependencies", "optionalDependencies"]) {
     if (!isDeepStrictEqual(pkg[field] ?? {}, lockedRoot[field] ?? {})) return false;
   }
-  const bin = typeof local.bin === "string" ? local.bin : isRecord(local.bin) ? local.bin["debt-watcher"] : undefined;
+  const bin = typeof local.bin === "string" ? local.bin : isRecord(local.bin) ? local.bin["debt-finder"] : undefined;
   if (typeof bin !== "string") return false;
   try {
-    const packageRoot = await realpath(join(root, "node_modules", "debt-watcher"));
+    const packageRoot = await realpath(join(root, "node_modules", "debt-finder"));
     const executable = await realpath(resolve(packageRoot, bin));
     const child = relative(packageRoot, executable);
     if (child.startsWith("..") || isAbsolute(child) || !(await stat(executable)).isFile()) return false;
-    if (!(await stat(join(root, "node_modules", ".bin", process.platform === "win32" ? "debt-watcher.cmd" : "debt-watcher"))).isFile()) return false;
+    if (!(await stat(join(root, "node_modules", ".bin", process.platform === "win32" ? "debt-finder.cmd" : "debt-finder"))).isFile()) return false;
   } catch { return false; }
   for (const flags of [[], ["--package-lock-only", "--package-lock=true"]]) {
     const result = await npm(["ls", "--json", "--all", ...flags], context);
     if (result.code !== 0) return false;
     try {
       const tree = parsePackageObject(result.stdout);
-      const dependency = isRecord(tree.dependencies) ? tree.dependencies["debt-watcher"] : undefined;
+      const dependency = isRecord(tree.dependencies) ? tree.dependencies["debt-finder"] : undefined;
       if (!isRecord(dependency) || dependency.version !== local.version
         || dependency.invalid || dependency.missing || dependency.extraneous
         || (Array.isArray(tree.problems) && tree.problems.length > 0)) return false;
@@ -75,7 +75,7 @@ function unrelatedPackageFields(pkg: Record<string, unknown>): Record<string, un
   const copy = structuredClone(pkg);
   for (const field of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]) {
     if (isRecord(copy[field])) {
-      delete copy[field]["debt-watcher"];
+      delete copy[field]["debt-finder"];
       if (!Object.keys(copy[field]).length) delete copy[field];
     }
   }
@@ -98,12 +98,12 @@ export async function applyTeamSetup(inspection: SetupInspection, context: TeamS
   const pkgText = snapshots.get("package.json")!;
   const pkg = pkgText === null ? { private: true } : parsePackageObject(pkgText);
   const declarations = ["devDependencies", "dependencies", "optionalDependencies", "peerDependencies"]
-    .filter((field) => isRecord(pkg[field]) && Object.hasOwn(pkg[field], "debt-watcher"));
+    .filter((field) => isRecord(pkg[field]) && Object.hasOwn(pkg[field], "debt-finder"));
   const preserveProduction = declarations.length === 1 && declarations[0] === "dependencies";
   const blockers = fresh.items.filter((item) => (item.status === "review" || item.status === "conflict")
     && item.id !== "script" && !(item.id === "dependency" && preserveProduction));
   if (blockers.length) throw new Error("Resolve these setup items before applying changes: " + blockers.map((item) => item.id).join(", ") + ". No files changed.");
-  const originalSpec = declarations.length ? (pkg[declarations[0]!] as Record<string, string>)["debt-watcher"] : undefined;
+  const originalSpec = declarations.length ? (pkg[declarations[0]!] as Record<string, string>)["debt-finder"] : undefined;
   let startingConfig = snapshots.get(CONFIG_FILENAME) === null
     ? validateConfiguration(context.startingConfiguration ?? await loadDefaultConfiguration()) : undefined;
   let installNeeded: boolean;
@@ -119,11 +119,11 @@ export async function applyTeamSetup(inspection: SetupInspection, context: TeamS
     return;
   }
   context.writeOutput("Plan: preserve existing config and unrelated package fields; create missing config, "
-    + "add the debt-watcher script, and share the node_modules/ ignore rule as needed.\n");
+    + "add the debt-finder script, and share the node_modules/ ignore rule as needed.\n");
   if (startingConfig) context.writeOutput(context.selectStartingConfiguration
     ? "For missing config, choose personal defaults when available or the supplied template (fresh=30 days).\n"
     : "New configuration starts with fresh=" + startingConfig.fresh + " days.\n");
-  if (preserveProduction) context.writeOutput("Keep Debt Watcher in dependencies; do not move it to devDependencies.\n");
+  if (preserveProduction) context.writeOutput("Keep Debt Finder in dependencies; do not move it to devDependencies.\n");
   context.writeOutput(installNeeded
     ? "npm will install/repair project dependencies and update package.json/package-lock.json. Lifecycle scripts are disabled.\n"
     : "Reuse the existing compatible local installation and lockfile; no npm install is needed.\n");
@@ -131,11 +131,11 @@ export async function applyTeamSetup(inspection: SetupInspection, context: TeamS
     throw new Error("Applying team setup requires confirmation in an interactive terminal. Use init --dry-run for inspection. No files changed.");
   }
   if (installNeeded && !declarations.length && !context.packageSpec && context.version === "0.0.0") {
-    throw new Error("This development version has not been released. Install a locally packed Debt Watcher archive in this repository first, then rerun init. No files changed.");
+    throw new Error("This development version has not been released. Install a locally packed Debt Finder archive in this repository first, then rerun init. No files changed.");
   }
   const ask = context.confirm ?? confirm;
   if (!await ask("Apply this team setup in \"" + root + "\"?")) throw new SetupCancelledError("Setup cancelled. No files changed.");
-  if (scriptConflict && !await ask('Replace the existing debt-watcher script with "debt-watcher"?')) {
+  if (scriptConflict && !await ask('Replace the existing debt-finder script with "debt-finder"?')) {
     throw new SetupCancelledError("Script replacement declined. No files changed.");
   }
   if (startingConfig && context.selectStartingConfiguration) {
@@ -150,7 +150,7 @@ export async function applyTeamSetup(inspection: SetupInspection, context: TeamS
   };
   await assertPlan();
   const scripts = isRecord(pkg.scripts) ? pkg.scripts : {};
-  const updated = { ...pkg, scripts: { ...scripts, "debt-watcher": "debt-watcher" } };
+  const updated = { ...pkg, scripts: { ...scripts, "debt-finder": "debt-finder" } };
   const packageOutput = isDeepStrictEqual(updated, pkg) && pkgText !== null ? pkgText : formatPackage(updated, pkgText);
   const updateIgnore = fresh.items.some((item) => item.id === "ignore-node_modules" && item.status === "missing");
   if (packageOutput !== pkgText || installNeeded) await assertWritable(join(root, "package.json"));
@@ -170,7 +170,7 @@ export async function applyTeamSetup(inspection: SetupInspection, context: TeamS
       await assertUnchanged(join(root, "package-lock.json"), snapshots.get("package-lock.json")!);
       await assertUnchanged(join(root, ".npmrc"), snapshots.get(".npmrc")!);
       const args = ["install", "--package-lock=true", "--package-lock-only=false", "--bin-links=true", "--dry-run=false", "--save=true"];
-      if (!declarations.length) args.push("--save-dev", "--save-exact", context.packageSpec ?? "debt-watcher@" + context.version);
+      if (!declarations.length) args.push("--save-dev", "--save-exact", context.packageSpec ?? "debt-finder@" + context.version);
       context.writeOutput("Running npm in " + root + "...\n");
       const result = await npm(args, localContext);
       if (result.code !== 0) throw new Error("npm install failed (exit " + result.code + "). " + result.stderr.trim());
@@ -183,8 +183,8 @@ export async function applyTeamSetup(inspection: SetupInspection, context: TeamS
     }
     const savedDeclaration = declarations.length ? current[declarations[0]!] : undefined;
     if (originalSpec !== undefined && (!isRecord(savedDeclaration)
-      || savedDeclaration["debt-watcher"] !== originalSpec)) {
-      throw new Error("The existing Debt Watcher dependency declaration changed during installation. Review before retrying.");
+      || savedDeclaration["debt-finder"] !== originalSpec)) {
+      throw new Error("The existing Debt Finder dependency declaration changed during installation. Review before retrying.");
     }
     if (!await reusableInstallation(root, current, npm, localContext)) throw new Error("npm installation or lockfile verification failed.");
     if (await readCheckout(localContext) !== originalCheckout) throw new Error("The active checkout changed during npm installation.");

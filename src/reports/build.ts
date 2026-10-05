@@ -1,10 +1,10 @@
 import type { CommentScanResult } from "../scanners/comments/scan.js";
-import type { DebtWatcherConfig } from "../config/types.js";
+import type { DebtFinderConfig } from "../config/types.js";
 import { ageInDays, categoryForAge, resolveAgeThresholds } from "./ages.js";
 import type { CodeFinding, CodeFindingsSnapshot, UnscannedFile } from "./types.js";
 
 /** Retain all scanned code findings and incomplete-coverage details before report filters run. */
-export function buildCodeFindings(scan: CommentScanResult, config: DebtWatcherConfig,
+export function buildCodeFindings(scan: CommentScanResult, config: DebtFinderConfig,
   asOf: Date): CodeFindingsSnapshot {
   if (!Number.isFinite(asOf.getTime())) throw new Error("Report generation date is invalid.");
   const aged: Array<Omit<CodeFinding, "category">> = [];

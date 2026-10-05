@@ -3,7 +3,7 @@ import type { CommittedSourceFile } from "../git/files.js";
 import type { BlamedMarker } from "../git/blame.js";
 import type { SourceComment, SourcePosition } from "../scanners/comments/types.js";
 import type { CommentScanResult } from "../scanners/comments/scan.js";
-import type { DebtWatcherConfig } from "../config/types.js";
+import type { DebtFinderConfig } from "../config/types.js";
 import type { AgeCategory, AgeThresholds } from "./ages.js";
 import type { ReportFilters } from "../commands/arguments.js";
 import type { BranchTipFinding } from "../scanners/branches.js";
@@ -31,7 +31,7 @@ export interface CodeFindingsSnapshot {
   generatedAt: string;
   branches: BranchSnapshot[];
   backends: CommentScanResult["backends"];
-  settings: DebtWatcherConfig;
+  settings: DebtFinderConfig;
   thresholds: AgeThresholds;
   findings: CodeFinding[];
   unscanned: UnscannedFile[];
@@ -43,7 +43,7 @@ export interface CodeReportView {
   generatedAt: string;
   branches: BranchSnapshot[];
   backends: CommentScanResult["backends"];
-  settings: DebtWatcherConfig;
+  settings: DebtFinderConfig;
   thresholds: AgeThresholds;
   filters: ReportFilters & { includeFresh: boolean };
   order: "oldnew" | "newold";

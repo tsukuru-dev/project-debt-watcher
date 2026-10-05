@@ -1,5 +1,5 @@
 {
-  "name": "debt-watcher",
+  "name": "debt-finder",
   "version": "1.0.0",
   "license": "BSD-3-Clause",
   "description": "Find ageing code comments and stale Git branches across a repository.",
@@ -18,11 +18,11 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test",
-    "debt-watcher": "node dist/cli.js",
+    "debt-finder": "node dist/cli.js",
     "prepack": "npm run build"
   },
   "bin": {
-    "debt-watcher": "dist/cli.js"
+    "debt-finder": "dist/cli.js"
   },
   "files": [
     "dist/",

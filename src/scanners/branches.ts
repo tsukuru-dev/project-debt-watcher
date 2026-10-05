@@ -1,6 +1,6 @@
 import { assertObjectId, type BranchSnapshot } from "../git/branches.js";
 import { runGitBytes, type GitContext } from "../git/client.js";
-import type { DebtWatcherConfig } from "../config/types.js";
+import type { DebtFinderConfig } from "../config/types.js";
 import { ageInDays, categoryForAge, resolveAgeThresholds,
   type AgeCategory, type AgeThresholds } from "../reports/ages.js";
 
@@ -64,7 +64,7 @@ async function readCommitTip(commitId: string, context: GitContext): Promise<Com
 
 /** Collect last-commit facts for selected refs without fetching or changing the checkout. */
 export async function scanBranchTips(context: GitContext, branches: readonly BranchSnapshot[],
-  config: DebtWatcherConfig, asOf: Date = new Date()): Promise<BranchTipScan> {
+  config: DebtFinderConfig, asOf: Date = new Date()): Promise<BranchTipScan> {
   if (!Number.isFinite(asOf.getTime())) throw new Error("Branch scan date is invalid.");
   const commits = new Map<string, CommitTip>();
   const aged: Array<Omit<BranchTipFinding, "category">> = [];

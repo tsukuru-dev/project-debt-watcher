@@ -7,5 +7,5 @@ node_modules/
 *.tsbuildinfo
 
 # Generated package archives and npm debug logs
-/debt-watcher-*.tgz
+/debt-finder-*.tgz
 npm-debug.log*

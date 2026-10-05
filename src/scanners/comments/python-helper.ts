@@ -31,7 +31,7 @@ try:
     else:
         # tokenize documents valid syntax as a precondition. Parsing builds an AST;
         # it does not execute statements, import project modules or write bytecode.
-        ast.parse(text, filename='<debt-watcher>', mode='exec')
+        ast.parse(text, filename='<debt-finder>', mode='exec')
         spans = []
         for token in tokenize.generate_tokens(io.StringIO(text).readline):
             if token.type == tokenize.ERRORTOKEN:

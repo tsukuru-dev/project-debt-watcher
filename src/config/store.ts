@@ -8,8 +8,8 @@ export class MissingConfigurationError extends Error {
   constructor(location: ConfigurationLocation) {
     const scope = location.scope === "global" ? "personal" : "repository";
     const guidance = location.scope === "global"
-      ? "Run debt-watcher --global config --set fresh=30 to create personal defaults."
-      : "Run debt-watcher init for team setup, or create this file from the supplied templates/debt-watcher.config.json.";
+      ? "Run debt-finder --global config --set fresh=30 to create personal defaults."
+      : "Run debt-finder init for team setup, or create this file from the supplied templates/debt-finder.config.json.";
     super(`Missing ${scope} configuration: "${location.path}". ${guidance}`);
     this.name = "MissingConfigurationError";
   }
@@ -62,7 +62,7 @@ export async function loadConfiguration(location: ConfigurationLocation): Promis
 
 /** Bundled starting settings for personal initialisation and confirmed team setup. */
 export async function loadDefaultConfiguration(): Promise<ConfigurationDocument> {
-  const path = new URL("../../templates/debt-watcher.config.json", import.meta.url);
+  const path = new URL("../../templates/debt-finder.config.json", import.meta.url);
   return parseConfiguration(await readFile(path, "utf8"), path.href);
 }
 

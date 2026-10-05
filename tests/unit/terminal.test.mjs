@@ -48,7 +48,7 @@ test("the confirmation prompt accepts only yes and cancels on blank input or EOF
 });
 
 test("editor launch errors reject and Windows batch wrappers are not sent to a shell", async () => {
-  await assert.rejects(openEditor("/unused/config.json", { env: { EDITOR: "debt-watcher-nonexistent-editor-4981" } }), /Could not launch editor/);
+  await assert.rejects(openEditor("/unused/config.json", { env: { EDITOR: "debt-finder-nonexistent-editor-4981" } }), /Could not launch editor/);
   await assert.rejects(openEditor("C:\\unused\\config.json", { platform: "win32", env: { EDITOR: "editor.cmd" } }), /executable.*wrapper/);
 });
 
@@ -86,17 +86,17 @@ function launcher(outcomes) {
 
 test("Windows opens the associated app and passes special characters as data", async () => {
   const fake = launcher([0]);
-  const path = "C:\\repo & user's $project; (test)\\debt-watcher.config.json";
+  const path = "C:\\repo & user's $project; (test)\\debt-finder.config.json";
   const env = { VISUAL: " ", EDITOR: "" };
   await openEditor(path, { platform: "win32", env, spawnProcess: fake.spawnProcess });
   assert.equal(fake.calls.length, 1);
   const call = fake.calls[0];
   assert.equal(call.command, "powershell.exe");
-  assert.equal(call.options.env.DEBT_WATCHER_EDITOR_FILE, path);
+  assert.equal(call.options.env.DEBT_FINDER_EDITOR_FILE, path);
   assert.ok(call.args.every((arg) => !arg.includes(path)));
   assert.equal(call.options.shell, false);
   assert.equal(call.options.windowsHide, true);
-  assert.equal(env.DEBT_WATCHER_EDITOR_FILE, undefined);
+  assert.equal(env.DEBT_FINDER_EDITOR_FILE, undefined);
 });
 
 test("Windows falls back to Notepad when association lookup or launching fails", async () => {

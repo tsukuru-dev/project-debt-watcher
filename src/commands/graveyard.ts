@@ -65,7 +65,7 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
     const root = await resolveRepositoryRoot(options.repo, { cwd: context.cwd,
       ...(context.env === undefined ? {} : { env: context.env }) });
     const cached = await latestReport(root, userPaths);
-    if (!cached) throw new Error("No previous report exists for this repository. Run debt-watcher graveyard or debt-watcher graveyard --save first.");
+    if (!cached) throw new Error("No previous report exists for this repository. Run debt-finder graveyard or debt-finder graveyard --save first.");
     const saved = await saveMarkdownReport(cached.markdown, {
       repositoryRoot: root, invocationDirectory: context.cwd,
       configuredDirectory: cached.settings.reportDirectory, generatedAt: cached.generatedAt,

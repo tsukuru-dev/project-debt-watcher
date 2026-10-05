@@ -13,5 +13,5 @@
   "includeFresh": false,
   "showAuthors": true,
   "order": "oldnew",
-  "reportDirectory": "./debt-watcher-reports"
+  "reportDirectory": "./debt-finder-reports"
 }

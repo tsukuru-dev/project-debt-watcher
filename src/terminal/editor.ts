@@ -53,7 +53,7 @@ const openAssociatedFile = [
   "$ErrorActionPreference = 'Stop'",
   "try {",
   "$info = New-Object System.Diagnostics.ProcessStartInfo",
-  "$info.FileName = $env:DEBT_WATCHER_EDITOR_FILE",
+  "$info.FileName = $env:DEBT_FINDER_EDITOR_FILE",
   "$info.UseShellExecute = $true",
   "$info.ErrorDialog = $false",
   "$info.Verb = 'open'",
@@ -97,7 +97,7 @@ export async function openEditor(path: string, options: EditorOptions = {}): Pro
   if (platform === "win32" && !explicit) {
     try {
       await launch("powershell.exe", ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", openAssociatedFile], {
-        ...options, env: { ...env, DEBT_WATCHER_EDITOR_FILE: path },
+        ...options, env: { ...env, DEBT_FINDER_EDITOR_FILE: path },
       });
       return;
     } catch {

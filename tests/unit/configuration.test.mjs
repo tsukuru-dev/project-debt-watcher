@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { validateConfiguration } from "../../dist/config/validate.js";
 
-const template = JSON.parse(readFileSync(new URL("../../templates/debt-watcher.config.json", import.meta.url), "utf8"));
+const template = JSON.parse(readFileSync(new URL("../../templates/debt-finder.config.json", import.meta.url), "utf8"));
 const { ageing: _ageing, buried: _buried, ...automatic } = template;
 
 test("default template is valid and uses the agreed 30-day freshness threshold", () => {
@@ -12,7 +12,7 @@ test("default template is valid and uses the agreed 30-day freshness threshold",
   assert.equal(result.includeFresh, false);
   assert.equal(result.showAuthors, true);
   assert.equal(result.order, "oldnew");
-  assert.equal(result.reportDirectory, "./debt-watcher-reports");
+  assert.equal(result.reportDirectory, "./debt-finder-reports");
   assert.equal(result.ageing, 60);
   assert.equal(result.buried, 90);
   assert.equal(Object.hasOwn(result, "fossil"), false);

@@ -85,8 +85,8 @@ function createProgram(options: CliOptions): Command {
     ...options.handlers,
   };
   const program = new Command()
-    .name("debt-watcher")
-    .description("Your friendly neighbourhood project debt watcher.")
+    .name("debt-finder")
+    .description("Your friendly neighbourhood project debt finder.")
     .version(options.version, "-V, --version", "Display the installed package version")
     .option("--global", "Select personal defaults (config only)")
     .option("--repo <path>", "Select another local Git repository", nonEmpty)
@@ -95,7 +95,7 @@ function createProgram(options: CliOptions): Command {
       writeOut: writeOutput,
       writeErr: options.stderr ?? ((text) => { process.stderr.write(text); }),
     })
-    .showHelpAfterError("Run 'debt-watcher --help' for usage.")
+    .showHelpAfterError("Run 'debt-finder --help' for usage.")
     .exitOverride()
     .addHelpText("after", "\nCode and branch reports, type and author summaries, Markdown saves and latest exports are available.");
 
@@ -120,15 +120,15 @@ function createProgram(options: CliOptions): Command {
     .addHelpText("after", [
       "",
       "Examples:",
-      "  debt-watcher graveyard --filter includefresh=true --order newold",
-      "  debt-watcher graveyard --remote --all --filter type=code",
-      "  debt-watcher graveyard --filter type=branches",
-      "  debt-watcher graveyard --group author",
-      "  debt-watcher graveyard --group age",
-      "  debt-watcher graveyard --save --output ./report.md",
-      "  debt-watcher graveyard --summary --save --output ./summary.md",
-      "  debt-watcher graveyard --summary blame --filter author=Alex",
-      "  debt-watcher graveyard --save latest --output ./copy.md",
+      "  debt-finder graveyard --filter includefresh=true --order newold",
+      "  debt-finder graveyard --remote --all --filter type=code",
+      "  debt-finder graveyard --filter type=branches",
+      "  debt-finder graveyard --group author",
+      "  debt-finder graveyard --group age",
+      "  debt-finder graveyard --save --output ./report.md",
+      "  debt-finder graveyard --summary --save --output ./summary.md",
+      "  debt-finder graveyard --summary blame --filter author=Alex",
+      "  debt-finder graveyard --save latest --output ./copy.md",
     ].join("\n"))
     .action(async (_localOptions, command: Command) => {
       const values = command.optsWithGlobals<GraveyardArguments>();
@@ -158,11 +158,11 @@ function createProgram(options: CliOptions): Command {
     "With no action, open the selected config in an editor (interactive terminals only).",
     "Copies replace settings, preserving destination metadata; existing settings require confirmation.",
     "Examples:",
-    "  debt-watcher config --set fresh=30 ageing=60 buried=120",
-    '  debt-watcher config --add markers="TO DO,FIXME"',
-    "  debt-watcher --global config --set fresh=30",
-    "  debt-watcher --global config --copy-from repo",
-    "  debt-watcher config --copy-from global",
+    "  debt-finder config --set fresh=30 ageing=60 buried=120",
+    '  debt-finder config --add markers="TO DO,FIXME"',
+    "  debt-finder --global config --set fresh=30",
+    "  debt-finder --global config --copy-from repo",
+    "  debt-finder config --copy-from global",
   ].join("\n"))
     .action(async (_localOptions, command: Command) => {
       const values = command.optsWithGlobals<ConfigArguments>();

@@ -1,43 +1,43 @@
 # to-do-graveyard
-Your friendly neighbourhood Project debt watcher
+Your friendly neighbourhood Project debt finder
 
 ## What it does
 
 ### Commands
 
-The npm package and executable are both named `debt-watcher`. Group all report actions under the `graveyard` subcommand. Configuration and project setup belong directly under `debt-watcher`. Use the hyphenated spelling consistently; do not expose a standalone `graveyard` executable.
+The npm package and executable are both named `debt-finder`. Group all report actions under the `graveyard` subcommand. Configuration and project setup belong directly under `debt-finder`. Use the hyphenated spelling consistently; do not expose a standalone `graveyard` executable.
 
 | Action | Command (globally installed executable) |
 | --- | --- |
-| Detailed report across all local branches | `debt-watcher graveyard` |
-| Summary counts by debt type | `debt-watcher graveyard --summary` |
-| Summary counts by author | `debt-watcher graveyard --summary blame` |
-| All remote branches | `debt-watcher graveyard --remote --all` |
-| Temporarily override report settings | `debt-watcher graveyard --fresh 60 --filter includefresh=true` |
-| Create or repair team setup | `debt-watcher init` |
-| Open the repository config | `debt-watcher config` |
-| Permanently change a setting | `debt-watcher config --set fresh=60` |
-| List configured markers | `debt-watcher config --list markers` |
-| Add markers | `debt-watcher config --add markers="TODO,FIXME"` |
-| Remove markers | `debt-watcher config --remove markers="HACK"` |
-| Change personal defaults | `debt-watcher --global config --set fresh=60` |
-| Copy this repository's settings to personal defaults | `debt-watcher --global config --copy-from repo` |
-| Copy personal defaults into this repository | `debt-watcher config --copy-from global` |
-| Oldest first / newest first | `debt-watcher graveyard --order oldnew` / `debt-watcher graveyard --order newold` |
-| Filter by debt category | `debt-watcher graveyard --filter type=branches` |
-| Filter by author | `debt-watcher graveyard --filter author="Alex Smith"` |
-| Generate and save a new detailed report | `debt-watcher graveyard --save` |
-| Generate and save a type summary | `debt-watcher graveyard --save --summary` |
-| Generate and save an author summary | `debt-watcher graveyard --save --summary blame` |
-| Save the latest report without rescanning | `debt-watcher graveyard --save latest` |
+| Detailed report across all local branches | `debt-finder graveyard` |
+| Summary counts by debt type | `debt-finder graveyard --summary` |
+| Summary counts by author | `debt-finder graveyard --summary blame` |
+| All remote branches | `debt-finder graveyard --remote --all` |
+| Temporarily override report settings | `debt-finder graveyard --fresh 60 --filter includefresh=true` |
+| Create or repair team setup | `debt-finder init` |
+| Open the repository config | `debt-finder config` |
+| Permanently change a setting | `debt-finder config --set fresh=60` |
+| List configured markers | `debt-finder config --list markers` |
+| Add markers | `debt-finder config --add markers="TODO,FIXME"` |
+| Remove markers | `debt-finder config --remove markers="HACK"` |
+| Change personal defaults | `debt-finder --global config --set fresh=60` |
+| Copy this repository's settings to personal defaults | `debt-finder --global config --copy-from repo` |
+| Copy personal defaults into this repository | `debt-finder config --copy-from global` |
+| Oldest first / newest first | `debt-finder graveyard --order oldnew` / `debt-finder graveyard --order newold` |
+| Filter by debt category | `debt-finder graveyard --filter type=branches` |
+| Filter by author | `debt-finder graveyard --filter author="Alex Smith"` |
+| Generate and save a new detailed report | `debt-finder graveyard --save` |
+| Generate and save a type summary | `debt-finder graveyard --save --summary` |
+| Generate and save an author summary | `debt-finder graveyard --save --summary blame` |
+| Save the latest report without rescanning | `debt-finder graveyard --save latest` |
 
 `git blame` is an internal implementation detail used to collect comment history. Author display is controlled by the `showAuthors` configuration boolean, which defaults to `true`. Detailed reports include authors by default; no `--blame` flag is required. Hiding authors must not disable the Git history lookups needed to calculate ages.
 
-Use the `debt-watcher` command families consistently. Team setup adds the npm script `"debt-watcher": "debt-watcher"`, so locally installed users can run `npm run debt-watcher -- graveyard --summary` or `npm run debt-watcher -- config --set fresh=60`. The standalone `--` passes the remaining arguments through npm to our CLI. Do not create an `npm run graveyard` shortcut or standalone `graveyard` executable.
+Use the `debt-finder` command families consistently. Team setup adds the npm script `"debt-finder": "debt-finder"`, so locally installed users can run `npm run debt-finder -- graveyard --summary` or `npm run debt-finder -- config --set fresh=60`. The standalone `--` passes the remaining arguments through npm to our CLI. Do not create an `npm run graveyard` shortcut or standalone `graveyard` executable.
 
-`npx` also runs locally installed packages; it is not limited to packages that have not been installed. `npx debt-watcher graveyard` uses the project dependency when available, otherwise npm can obtain the package through its cache. A direct `debt-watcher` command requires the executable to be on PATH, normally through global installation.
+`npx` also runs locally installed packages; it is not limited to packages that have not been installed. `npx debt-finder graveyard` uses the project dependency when available, otherwise npm can obtain the package through its cache. A direct `debt-finder` command requires the executable to be on PATH, normally through global installation.
 
-For `npx`, use `npx debt-watcher graveyard --summary`. The package and executable names match. Do not document `npx graveyard` as a way to fetch our package.
+For `npx`, use `npx debt-finder graveyard --summary`. The package and executable names match. Do not document `npx graveyard` as a way to fetch our package.
 
 ### Temporary overrides and permanent settings
 
@@ -48,23 +48,23 @@ For `npx`, use `npx debt-watcher graveyard --summary`. The package and executabl
 - Support `--filter includefresh=true` and `--filter includefresh=false` to override the saved `includeFresh` boolean for the run. Do not use separate fresh-inclusion flags. This changes inclusion, not the configured day thresholds.
 - Support `--repo "../another-project"` to target another local Git repository. Resolve this path against the invocation's working directory, then use the target repository's configuration, setup, and report snapshot. It is a local path, not a request to clone a remote URL.
 - Allow report flags to combine, including `--summary`, marker filters, age settings, ordering, debt-type and author filters, and repository selection, except for the incompatible save modes documented below.
-- `debt-watcher config` opens the current repository's existing configuration; `debt-watcher init` creates or repairs integration. Do not duplicate these actions with a `--setup` flag.
-- Permanent CLI changes use configuration action flags: `--set`, `--add`, `--remove`, `--list`, or `--copy-from`. Permit only one action per invocation. With no action, `debt-watcher config` opens the selected config in the editor.
-- `--set key=value` replaces that setting, for example `debt-watcher config --set fresh=60`, `debt-watcher config --set includeFresh=true`, or `debt-watcher config --set showAuthors=false`. Support multiple assignments within a single `--set` action so custom age thresholds can be updated and validated together before any write, for example `debt-watcher config --set fresh=30 ageing=60 buried=120`.
-- `debt-watcher config --set markers="TODO,FIXME"` replaces the entire marker list. `--add markers="TODO,FIXME"` appends missing markers without duplicates; `--remove markers="HACK"` removes the listed markers without changing the others. Adding an existing marker or removing an absent one leaves the list unchanged and reports that result.
-- `debt-watcher config --list markers` displays the current marker list; `--list` without a key displays all saved settings and the selected configuration file path. Listing must not edit settings or open an editor.
+- `debt-finder config` opens the current repository's existing configuration; `debt-finder init` creates or repairs integration. Do not duplicate these actions with a `--setup` flag.
+- Permanent CLI changes use configuration action flags: `--set`, `--add`, `--remove`, `--list`, or `--copy-from`. Permit only one action per invocation. With no action, `debt-finder config` opens the selected config in the editor.
+- `--set key=value` replaces that setting, for example `debt-finder config --set fresh=60`, `debt-finder config --set includeFresh=true`, or `debt-finder config --set showAuthors=false`. Support multiple assignments within a single `--set` action so custom age thresholds can be updated and validated together before any write, for example `debt-finder config --set fresh=30 ageing=60 buried=120`.
+- `debt-finder config --set markers="TODO,FIXME"` replaces the entire marker list. `--add markers="TODO,FIXME"` appends missing markers without duplicates; `--remove markers="HACK"` removes the listed markers without changing the others. Adding an existing marker or removing an absent one leaves the list unchanged and reports that result.
+- `debt-finder config --list markers` displays the current marker list; `--list` without a key displays all saved settings and the selected configuration file path. Listing must not edit settings or open an editor.
 - Treat a quoted comma-separated marker value as one argument, split on commas, trim surrounding whitespace, and preserve spaces inside markers. For example `--add markers="TO DO"` adds one marker, and `--add markers="TO DO,FIXME"` adds two. Reject empty markers; literal commas inside marker names are not supported by this CLI list syntax. Markers contain no language comment delimiters.
 - Parse booleans, day thresholds, and marker lists into the appropriate config types. Reject unknown keys, incompatible actions, and invalid resulting settings before writing; preserve unrelated settings and display the updated file path. A permanent freshness change without explicit age-band assignments selects automatic age bands; explicit custom bands must form a complete valid ascending set after merging with saved settings.
-- `debt-watcher --global config` selects the personal defaults file. Its action flags operate on that file instead of the repository config and normally require no repository. The exception is copying from a repository, which needs a source repository. `--global` is a configuration scope, not a report option or an instruction to install globally.
+- `debt-finder --global config` selects the personal defaults file. Its action flags operate on that file instead of the repository config and normally require no repository. The exception is copying from a repository, which needs a source repository. `--global` is a configuration scope, not a report option or an instruction to install globally.
 - `--repo` selects the target local repository for reports, `init`, repository configuration actions, and saved report lookup. With `--global config --copy-from repo`, it selects the source repository. Reject other combinations of `--global` and `--repo` rather than silently choosing a configuration file.
 
 ### Ordering and report filters
 
-- Support `debt-watcher graveyard --order oldnew` for oldest to newest and `--order newold` for newest to oldest. The configuration template sets default `order` to `oldnew`; CLI ordering overrides it for the current run. Reject other order values. Use stable tie-breakers so equal-age findings have predictable ordering.
+- Support `debt-finder graveyard --order oldnew` for oldest to newest and `--order newold` for newest to oldest. The configuration template sets default `order` to `oldnew`; CLI ordering overrides it for the current run. Reject other order values. Use stable tie-breakers so equal-age findings have predictable ordering.
 - Support `--filter type=code`, `--filter type=branches`, and, when issue scanning is implemented, `--filter type=issues`. 
 - A comma-separated type list, such as `--filter type=code,branches`, includes either category. Reject unknown or not-yet-implemented categories with a clear message.
 - Support `--filter author="Alex Smith"`. Match the supplied text case-insensitively against available author names, emails, or provider usernames. Match the blamed author for code, the last commit author for branches, and the issue author for issues. This filter works even when `showAuthors` is false; missing author data does not match an author filter.
-- Allow repeated `--filter` options for different criteria: `debt-watcher graveyard --filter type=code --filter author="Alex" --order newold`. Different criteria combine with AND; values in a type list combine with OR. Reject duplicate filter keys and empty values rather than silently overriding them.
+- Allow repeated `--filter` options for different criteria: `debt-finder graveyard --filter type=code --filter author="Alex" --order newold`. Different criteria combine with AND; values in a type list combine with OR. Reject duplicate filter keys and empty values rather than silently overriding them.
 - Apply filters before calculating displayed category counts, total debt, and the oldest matching item. Counts and summary content must describe the filtered results. Reversing the display order must not change which item is reported as the oldest.
 - By default, group the detailed report into code, issues (when implemented), and branches; order rows within each section. Summary mode uses the same filters. Report metadata and cached snapshots must record the selected filters and order.
 - The default detailed report and `--group type` use the same debt-type sections. `--group author` instead puts code and branch rows under author headings with counts; match code and branch identities by email when available, keep distinct email identities separate, and show missing attribution under Unknown. `--group age` puts rows under Fresh, Ageing, Buried, and Fossil headings, omitting empty headings. Group headings follow `--order`, and each row retains its age, type, reference link, and details. Apply filters before grouping, preserve global totals and the oldest item, and save or cache the selected layout. Reject `--group` with `--summary` or `--save latest`.
@@ -73,8 +73,8 @@ For `npx`, use `npx debt-watcher graveyard --summary`. The package and executabl
 ### Summary actions
 
 - `--summary` is a report action flag under `graveyard`, alongside `--filter` and `--save`. It can combine with filters, scope options, and a new-report save. The mutually exclusive configuration-action rule applies to `config`, not to these report actions.
-- `debt-watcher graveyard --summary` produces counts grouped by debt type (code, branches, and issues as implemented), total debt, and the oldest matching item, without detailed finding rows. Support `--summary types` as the explicit equivalent.
-- `debt-watcher graveyard --summary blame` produces counts grouped by author instead of debt type, plus total debt and the oldest matching item. It summarises the same filtered findings rather than running a different scan. Reject unknown summary modes.
+- `debt-finder graveyard --summary` produces counts grouped by debt type (code, branches, and issues as implemented), total debt, and the oldest matching item, without detailed finding rows. Support `--summary types` as the explicit equivalent.
+- `debt-finder graveyard --summary blame` produces counts grouped by author instead of debt type, plus total debt and the oldest matching item. It summarises the same filtered findings rather than running a different scan. Reject unknown summary modes.
 - Attribute code findings to their blamed author, branches to the last commit author, and issues to their author. Group using available author identity metadata, not display name alone when distinct identities are known. Do not guess that identities from different sources belong to the same person. Include unknown authors in an explicit Unknown group so group counts still sum to the report total.
 - `showAuthors` controls author columns in detailed reports. Explicit `--summary blame` or `--group author` requests author grouping and labels even when `showAuthors` is false.
 - Apply the same age, marker, type, author, and fresh-item filters before calculating either summary. The lowercase filter key `includefresh` maps to the config property `includeFresh`; omitted inclusion filters use that saved boolean, initially false. Accept only `true` or `false` for the inclusion filter, and reject duplicate or conflicting values.
@@ -123,42 +123,42 @@ So user can either set just the fresh threshold or set the ageing (💀) and bur
 
 CLI overrides are temporary. A freshness-only override uses the /3 rule; explicit custom age-band overrides use their validated thresholds instead.
 
-The configuration must contain an `includeFresh` boolean, set to `false` in the initial/default template. Use `--filter includefresh=true` or `--filter includefresh=false` to override it for one report, without changing age thresholds or saved settings. Use `debt-watcher config --set includeFresh=true` or `includeFresh=false` to persist the choice.
+The configuration must contain an `includeFresh` boolean, set to `false` in the initial/default template. Use `--filter includefresh=true` or `--filter includefresh=false` to override it for one report, without changing age thresholds or saved settings. Use `debt-finder config --set includeFresh=true` or `includeFresh=false` to persist the choice.
 
 ## Saving reports
 
 Provide two distinct save behaviours. By default, generate and save a new detailed report, or a new summary when `--summary` is supplied; no previous report is required:
 
 ```sh
-debt-watcher graveyard --save
-debt-watcher graveyard --save --remote --all
-debt-watcher graveyard --save --summary
-debt-watcher graveyard --save --summary blame --filter includefresh=false
+debt-finder graveyard --save
+debt-finder graveyard --save --remote --all
+debt-finder graveyard --save --summary
+debt-finder graveyard --save --summary blame --filter includefresh=false
 ```
 
 To export a previously generated report without rescanning, use `--save latest`:
 
 ```sh
-debt-watcher graveyard
-debt-watcher graveyard --save latest
+debt-finder graveyard
+debt-finder graveyard --save latest
 ```
 
 Both forms support an optional output file path through `--output`:
 
 ```sh
-debt-watcher graveyard --save --output "./reports/debt-report.md"
-debt-watcher graveyard --save latest --output "./reports/debt-report.md"
+debt-finder graveyard --save --output "./reports/debt-report.md"
+debt-finder graveyard --save latest --output "./reports/debt-report.md"
 ```
 
-- `debt-watcher graveyard --save` performs a new scan using the current repository configuration and any temporary report overrides, then exports the chosen report view. With no summary action, export detailed tables and the summary; with `--summary`, export the type summary; with `--summary blame`, export the author summary. Configured freshness, marker, and scope filters still apply. Saving does not automatically include fresh items or every remote branch.
+- `debt-finder graveyard --save` performs a new scan using the current repository configuration and any temporary report overrides, then exports the chosen report view. With no summary action, export detailed tables and the summary; with `--summary`, export the type summary; with `--summary blame`, export the author summary. Configured freshness, marker, and scope filters still apply. Saving does not automatically include fresh items or every remote branch.
 - Plain `--save` combines with `--summary` or `--summary blame` and scan options such as `--remote --all`, `--fresh`, `--markers`, `--order`, and `--filter`. It must not require generating a summary separately before saving it.
-- `debt-watcher graveyard --save latest` saves the last successfully generated detailed, type-summary, or author-summary report for the target repository without rescanning. Preserve its original generation time, branch scope, filters, order, age values, author visibility, closing line, and exact report view. Changes made to scanning configuration after generation must not alter this snapshot.
+- `debt-finder graveyard --save latest` saves the last successfully generated detailed, type-summary, or author-summary report for the target repository without rescanning. Preserve its original generation time, branch scope, filters, order, age values, author visibility, closing line, and exact report view. Changes made to scanning configuration after generation must not alter this snapshot.
 - Reject combining `--save latest` with report-changing flags, including `--summary`, `--order`, `--filter`, freshness and age thresholds, marker filters, fresh-item inclusion, or branch scope options. `--output` and `--repo` are allowed because they choose the destination and repository snapshot without changing its content.
 - The only explicit save-mode value is `latest`. Reject unknown values and positional output paths; use `--output` for filenames. Reject `--output` without `--save` so a destination is never silently ignored.
 - Retain the latest successfully generated report snapshot per repository in a user-level cache outside the repository so it survives separate CLI invocations, including `npx`. A successful new report generation, including plain `--save`, replaces that repository's previous snapshot; `--save latest` does not rescan or change its generation time. Local, global, and `npx` usage must share this behaviour. Do not store snapshots in shared configuration or Git.
 - For the first version, export readable UTF-8 Markdown with headings, tables where applicable, emojis, and ordinary links instead of terminal colour or hyperlink escape sequences.
-- Include a default report directory in the configuration template, initially `./debt-watcher-reports`. Resolve configured relative directories against the repository root so the setting works for teammates and when the whole repository moves. Also support absolute directory paths valid on the current operating system; document that personal absolute paths are not portable between teammates' machines.
-- Without an explicit output file path, save in the configured report directory with a timestamped `debt-watcher-report-<timestamp>.md` filename valid on Windows, macOS, and Linux. Display the full saved path.
+- Include a default report directory in the configuration template, initially `./debt-finder-reports`. Resolve configured relative directories against the repository root so the setting works for teammates and when the whole repository moves. Also support absolute directory paths valid on the current operating system; document that personal absolute paths are not portable between teammates' machines.
+- Without an explicit output file path, save in the configured report directory with a timestamped `debt-finder-report-<timestamp>.md` filename valid on Windows, macOS, and Linux. Display the full saved path.
 - An explicit output file path overrides the configured directory for that save only. Resolve CLI relative paths against the current working directory. Do not silently rewrite the shared configuration for a one-off export.
 - Check that the resolved destination directory exists on every save. If it is missing during interactive use, show the full path and offer to create it, retry after the user creates it manually, choose another directory, or cancel. Create directories only after confirmation; create the report file when the destination is ready.
 - When the user chooses a different directory, offer to remember it as the default in the shared configuration, explaining that this changes the team's setting. Persist it only after confirmation and successful directory validation or creation, preserving all other settings. Store directories inside the repository as relative paths. Creating the already-configured directory requires no configuration change.
@@ -166,7 +166,7 @@ debt-watcher graveyard --save latest --output "./reports/debt-report.md"
 - Do not search the filesystem for matching folder names or silently redirect output. Moving the whole repository preserves relative directory settings. If only the report directory moves or is renamed, require an updated path through configuration or the interactive directory selection.
 - If the destination path is invalid or cannot be written to, report the specific problem without claiming the report was saved. Preserve the cached report so the user can retry.
 - Do not silently overwrite an existing file; request confirmation interactively or fail clearly in non-interactive use. This also applies to a collision with an automatically generated filename.
-- If `--save latest` finds no snapshot for the target repository, explain that the user must generate a report first or use plain `debt-watcher graveyard --save`. Never export another repository's report or silently generate a replacement for `--save latest`. Plain `--save` must work without an existing snapshot and it generates graveyard report then saves.
+- If `--save latest` finds no snapshot for the target repository, explain that the user must generate a report first or use plain `debt-finder graveyard --save`. Never export another repository's report or silently generate a replacement for `--save latest`. Plain `--save` must work without an existing snapshot and it generates graveyard report then saves.
 - Exported reports are user-requested files; saving must not automatically stage, commit, or change Git ignore rules for them.
 
 ## Compatibility
@@ -200,38 +200,38 @@ we will do issues last so lets put a pin in that for now
 
 - Build one npm CLI package using TypeScript and Node.js.
 - Publish compiled JavaScript so users do not need to build the tool.
-- Publish the `debt-watcher` package with a single executable named `debt-watcher`.
+- Publish the `debt-finder` package with a single executable named `debt-finder`.
 - Users require Node.js/npm and Git.
 
 ### Launch through npx
 
 Support:
-- `npx debt-watcher graveyard`
-- `npx debt-watcher graveyard --summary`
-- `npx debt-watcher graveyard --summary blame`
-- `npx debt-watcher graveyard --save`
-- `npx debt-watcher graveyard --save --summary`
-- `npx debt-watcher graveyard --save --summary blame --filter includefresh=false`
-- `npx debt-watcher graveyard --save latest`
-- `npx debt-watcher graveyard --order newold --filter type=code`
-- `npx debt-watcher config`
-- `npx debt-watcher config --set includeFresh=true`
-- `npx debt-watcher --global config --set fresh=60`
-- `npx debt-watcher init`
+- `npx debt-finder graveyard`
+- `npx debt-finder graveyard --summary`
+- `npx debt-finder graveyard --summary blame`
+- `npx debt-finder graveyard --save`
+- `npx debt-finder graveyard --save --summary`
+- `npx debt-finder graveyard --save --summary blame --filter includefresh=false`
+- `npx debt-finder graveyard --save latest`
+- `npx debt-finder graveyard --order newold --filter type=code`
+- `npx debt-finder config`
+- `npx debt-finder config --set includeFresh=true`
+- `npx debt-finder --global config --set fresh=60`
+- `npx debt-finder init`
 
 This usage must work in Git repositories without a package.json.
-Every repository must have a Debt Watcher configuration file before scanning, including when using `npx`. If it is missing during an interactive run, offer the single team setup flow below. If setup is declined, cancel the scan. Non-interactive and CI runs must report missing configuration with setup instructions instead of silently using defaults.
+Every repository must have a Debt Finder configuration file before scanning, including when using `npx`. If it is missing during an interactive run, offer the single team setup flow below. If setup is declined, cancel the scan. Non-interactive and CI runs must report missing configuration with setup instructions instead of silently using defaults.
 `npx` uses the locally installed package when available; otherwise it can obtain the package through npm's cache. It does not necessarily download the package on every run.
 
 ### Install in a project
 
-Support both `npm install debt-watcher` and `npm install --save-dev debt-watcher`. Recommend in readme the development dependency form for team setup because the tool is used during development rather than by the live application.
+Support both `npm install debt-finder` and `npm install --save-dev debt-finder`. Recommend in readme the development dependency form for team setup because the tool is used during development rather than by the live application.
 
 After installation, the same npx commands must run the local version.
 
 ### Global installation
 
-Support `npm install -g debt-watcher`, then the `debt-watcher graveyard`, `debt-watcher config`, and `debt-watcher init` command families from any appropriate repository.
+Support `npm install -g debt-finder`, then the `debt-finder graveyard`, `debt-finder config`, and `debt-finder init` command families from any appropriate repository.
 
 Global, local, and `npx` usage must provide the same scanning features and use the same configuration in the target repository root. Global installation alone does not configure repositories. Accepted setup always creates the team integration, including a local dependency, even when launched through the global executable or `npx`.
 
@@ -239,7 +239,7 @@ Global, local, and `npx` usage must provide the same scanning features and use t
 
 - Provide a real personal defaults file in a user-level configuration location outside any repository, installed package, and npm cache. Initialise it from the supplied template on the first normal CLI invocation of a global installation, or the first explicit `--global config` command from any installation. Existing personal preferences must never be overwritten by initialisation or package updates. Help and version requests must not create files.
 - Users of a global installation must not need to manually create their personal config. Document that file creation occurs on first use so setup works even when npm installation hooks are disabled. Initialising personal defaults must not modify a repository or silently perform team setup.
-- `debt-watcher --global config` opens personal defaults; `debt-watcher --global config --set fresh=60` edits them. Support the same listing and marker actions as repository configuration. These commands do not require a repository except when copying from one.
+- `debt-finder --global config` opens personal defaults; `debt-finder --global config --set fresh=60` edits them. Support the same listing and marker actions as repository configuration. These commands do not require a repository except when copying from one.
 - Offer the same setup behaviour for global, local, and `npx` usage. The following table describes interactive runs; non-interactive and CI behaviour remains governed by the rules below.
 
 | Repository state | Behaviour |
@@ -258,10 +258,10 @@ Global, local, and `npx` usage must provide the same scanning features and use t
 
 ```sh
 # Current checked-out repository configuration -> personal defaults
-debt-watcher --global config --copy-from repo
+debt-finder --global config --copy-from repo
 
 # Personal defaults -> current checked-out repository configuration
-debt-watcher config --copy-from global
+debt-finder config --copy-from global
 ```
 
 - Treat copying as a separate configuration action, mutually exclusive with `--set`, `--add`, `--remove`, and `--list`. `copyrepo` and `copyuserglobal` are not configuration keys.
@@ -283,22 +283,22 @@ debt-watcher config --copy-from global
 
 ### Team dependency installation
 
-- Team setup adds Debt Watcher to the project's dependency list, so teammates get it automatically when they run a normal `npm install` after cloning the repository.
-- Record Debt Watcher in `devDependencies` in the project's `package.json`.
+- Team setup adds Debt Finder to the project's dependency list, so teammates get it automatically when they run a normal `npm install` after cloning the repository.
+- Record Debt Finder in `devDependencies` in the project's `package.json`.
 - Use npm to install the dependency and generate or update `package-lock.json`; do not manually construct lockfile entries.
-- Commit `package.json`, `package-lock.json`, and the shared Debt Watcher configuration. Ignore `node_modules/`.
-- Teammates must be able to use the committed setup, including the shared configuration file, without separately installing Debt Watcher or repeating setup. All teammates use the committed scanning rules; CLI overrides apply only to the current run and must not rewrite shared settings.
-- Publish the released Debt Watcher package to the npm registry so npm can download it by its published package name(we will do this after build complete). Adding it to a project's dependency list does not publish it.
+- Commit `package.json`, `package-lock.json`, and the shared Debt Finder configuration. Ignore `node_modules/`.
+- Teammates must be able to use the committed setup, including the shared configuration file, without separately installing Debt Finder or repeating setup. All teammates use the committed scanning rules; CLI overrides apply only to the current run and must not rewrite shared settings.
+- Publish the released Debt Finder package to the npm registry so npm can download it by its published package name(we will do this after build complete). Adding it to a project's dependency list does not publish it.
 
 ### Shared configuration and production deployment
 
-- Keep the required Debt Watcher configuration file in the repository root and commit it to Git so the team shares consistent markers, freshness thresholds, and age categories.
+- Keep the required Debt Finder configuration file in the repository root and commit it to Git so the team shares consistent markers, freshness thresholds, and age categories.
 - Do not add the configuration file to `.gitignore`. Setup must preserve existing configuration and tell users if Git ignore rules prevent it from being tracked.
-- The installation guide must explain which files to commit: the Debt Watcher configuration, `package.json`, and `package-lock.json`. Installed dependencies in `node_modules/` must be ignored by Git.
-- Debt Watcher and its configuration are development tooling. Document how to exclude the configuration from production deployment artifacts or live application images using the project's build or deployment rules, while keeping it in the source repository.
-- Document omitting development dependencies from the final production runtime installation. Development and CI jobs that run Debt Watcher still need the tool and its configuration.
+- The installation guide must explain which files to commit: the Debt Finder configuration, `package.json`, and `package-lock.json`. Installed dependencies in `node_modules/` must be ignored by Git.
+- Debt Finder and its configuration are development tooling. Document how to exclude the configuration from production deployment artifacts or live application images using the project's build or deployment rules, while keeping it in the source repository.
+- Document omitting development dependencies from the final production runtime installation. Development and CI jobs that run Debt Finder still need the tool and its configuration.
 - Explain that `.gitignore` controls Git tracking, not production deployment, and that omitting development dependencies does not automatically exclude the configuration file. Deployment exclusions depend on the consuming project; setup must not claim to configure every deployment system automatically.
-- Users are responsible for configuring their build/deployment pipeline to exclude Debt Watcher and its configuration from the final production artifact or runtime. Keep them available in development and in CI jobs that run Debt Watcher.
+- Users are responsible for configuring their build/deployment pipeline to exclude Debt Finder and its configuration from the final production artifact or runtime. Keep them available in development and in CI jobs that run Debt Finder.
 - Some build systems already exclude development tooling, so an explicit removal step won’t always be necessary.
 
 ### First-run setup and init
@@ -306,12 +306,12 @@ debt-watcher config --copy-from global
 Offer setup or repair according to the repository-state table during interactive use. Also provide an explicit command to run setup later:
 
 ```sh
-npx debt-watcher init
+npx debt-finder init
 ```
 
-Globally installed users can run `debt-watcher init`. Users do not need to run `init` separately if they accept setup on first use or their repository already contains a valid configuration.
+Globally installed users can run `debt-finder init`. Users do not need to run `init` separately if they accept setup on first use or their repository already contains a valid configuration.
 
-Provide one setup flow: team setup. Explain the configuration, npm dependency, `debt-watcher` npm script, package-file, and Git ignore changes, then ask for confirmation. Accepting performs setup and opens the configuration. Declining makes no project changes; if required configuration is missing, cancel the scan. Declining integration repair may leave scanning available through an already installed tool when the repository config is valid. Do not offer a separate configuration-only setup mode.
+Provide one setup flow: team setup. Explain the configuration, npm dependency, `debt-finder` npm script, package-file, and Git ignore changes, then ask for confirmation. Accepting performs setup and opens the configuration. Declining makes no project changes; if required configuration is missing, cancel the scan. Declining integration repair may leave scanning available through an already installed tool when the repository config is valid. Do not offer a separate configuration-only setup mode.
 
 Setup must create files in the repository being configured, not in the installed package or npm cache. Use the supplied template or a copy of personal defaults chosen as described above, then open the file for editing rather than ask a questionnaire about each setting. If opening the editor fails, display the configuration's full path. Existing configuration must be reused and preserved.
 
@@ -319,8 +319,8 @@ Team setup must:
 
 - Create the editable repository configuration from the chosen starting settings when one does not exist. The supplied template sets `fresh` to `30` days, `includeFresh` to `false`, `showAuthors` to `true`, and `order` to `oldnew`.
 - Create a minimal `package.json` when none exists, including in Python, Go, and other non-Node repositories. Set `"private": true` only in a newly created package.json to prevent accidental npm publication of that project; preserve an existing project's setting.
-- Add Debt Watcher as a local development dependency using npm, updating the package files and lockfile. Reuse an existing compatible local installation without unnecessary reinstallation or silently changing its dependency classification.
-- Add `"debt-watcher": "debt-watcher"` to the project's npm scripts, preserving other scripts and asking before replacing a conflicting value. Do not add a script named `graveyard`. Reuse an already matching script without changing it.
+- Add Debt Finder as a local development dependency using npm, updating the package files and lockfile. Reuse an existing compatible local installation without unnecessary reinstallation or silently changing its dependency classification.
+- Add `"debt-finder": "debt-finder"` to the project's npm scripts, preserving other scripts and asking before replacing a conflicting value. Do not add a script named `graveyard`. Reuse an already matching script without changing it.
 - Ensure `node_modules/` is ignored by Git, creating or updating `.gitignore` while preserving existing entries. Do not ignore the shared configuration or package files.
 - Preserve unrelated package.json fields, dependencies, scripts, and configuration.
 - Ask before replacing conflicting scripts or existing configuration; without confirmation, preserve them. In non-interactive use, report conflicts without overwriting them.
@@ -334,20 +334,20 @@ The generated npm script exposes all command families through the locally instal
 ```json
 {
   "scripts": {
-    "debt-watcher": "debt-watcher"
+    "debt-finder": "debt-finder"
   }
 }
 ```
 
 ```sh
-npm run debt-watcher -- graveyard
-npm run debt-watcher -- graveyard --summary
-npm run debt-watcher -- graveyard --save --summary blame --filter includefresh=false
-npm run debt-watcher -- config --set fresh=60
-npm run debt-watcher -- --global config --set fresh=60
+npm run debt-finder -- graveyard
+npm run debt-finder -- graveyard --summary
+npm run debt-finder -- graveyard --save --summary blame --filter includefresh=false
+npm run debt-finder -- config --set fresh=60
+npm run debt-finder -- --global config --set fresh=60
 ```
 
-These are the same CLI operations available through `npx debt-watcher ...` or a globally available `debt-watcher ...`. npm runs the project's script and passes the arguments following the standalone `--` to our executable; there is no separate command interface for team installations.
+These are the same CLI operations available through `npx debt-finder ...` or a globally available `debt-finder ...`. npm runs the project's script and passes the arguments following the standalone `--` to our executable; there is no separate command interface for team installations.
 
 CI and non-interactive report runs must not prompt, open an editor, install dependencies, or generate missing repository or personal configuration. They use the committed repository configuration and already installed tooling; missing required repository configuration produces a clear error. Missing personal defaults must not block an otherwise configured CI scan. Explicit personal config-editing commands may initialise their target defaults file, subject to validation and overwrite rules.
 

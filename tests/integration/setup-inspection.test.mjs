@@ -8,21 +8,21 @@ import { configFilename, fixture } from "../helpers/config-fixture.mjs";
 function json(path, value) { writeFileSync(path, JSON.stringify(value, null, 2) + "\n"); }
 function manifest(repo, changes = {}) {
   json(join(repo, "package.json"), { name: "consumer", private: false,
-    scripts: { "debt-watcher": "debt-watcher", build: "do-not-execute" },
-    devDependencies: { "debt-watcher": "^1.2.3" }, ...changes });
+    scripts: { "debt-finder": "debt-finder", build: "do-not-execute" },
+    devDependencies: { "debt-finder": "^1.2.3" }, ...changes });
 }
 function installed(repo) {
-  const directory = join(repo, "node_modules", "debt-watcher");
+  const directory = join(repo, "node_modules", "debt-finder");
   mkdirSync(directory, { recursive: true });
-  json(join(directory, "package.json"), { name: "debt-watcher", version: "1.2.3" });
+  json(join(directory, "package.json"), { name: "debt-finder", version: "1.2.3" });
 }
 function complete(f, repo) {
   f.writeConfig(repo);
   manifest(repo);
   installed(repo);
   json(join(repo, "package-lock.json"), { lockfileVersion: 3,
-    packages: { "": { devDependencies: { "debt-watcher": "^1.2.3" } },
-      "node_modules/debt-watcher": { version: "1.2.3", dev: true } } });
+    packages: { "": { devDependencies: { "debt-finder": "^1.2.3" } },
+      "node_modules/debt-finder": { version: "1.2.3", dev: true } } });
   writeFileSync(join(repo, ".gitignore"), "node_modules/\n");
 }
 async function inspect(f, repo) {
@@ -86,8 +86,8 @@ test("declared dependencies are distinguished from missing local installations a
 test("conflicting scripts and existing dependency classifications require review without replacement", async (t) => {
   const f = fixture(t);
   const repo = f.repository();
-  manifest(repo, { scripts: { "debt-watcher": "custom-script", test: "keep-me" },
-    devDependencies: {}, dependencies: { "debt-watcher": "^1.2.3" } });
+  manifest(repo, { scripts: { "debt-finder": "custom-script", test: "keep-me" },
+    devDependencies: {}, dependencies: { "debt-finder": "^1.2.3" } });
   const before = readFileSync(join(repo, "package.json"), "utf8");
   const result = await inspect(f, repo);
   assert.equal(item(result, "script").status, "conflict");
@@ -116,7 +116,7 @@ test("invalid configuration, manifest and lockfile are all reported and preserve
 test("Git evaluates negated rules, ignored shared files, and the matching rule source", async (t) => {
   const f = fixture(t);
   const repo = f.repository();
-  writeFileSync(join(repo, ".gitignore"), "*.json\n!debt-watcher.config.json\nnode_modules/\n");
+  writeFileSync(join(repo, ".gitignore"), "*.json\n!debt-finder.config.json\nnode_modules/\n");
   const result = await inspect(f, repo);
   assert.equal(item(result, "tracking-" + configFilename).status, "present");
   assert.equal(item(result, "tracking-package.json").status, "review");
@@ -185,7 +185,7 @@ test("manifest field errors, workspace workflows, shrinkwrap and self-installati
   const repo = f.repository();
   manifest(repo, { scripts: [] });
   assert.equal(item(await inspect(f, repo), "package").status, "conflict");
-  manifest(repo, { name: "debt-watcher", workspaces: ["packages/*"], packageManager: "pnpm@9.0.0" });
+  manifest(repo, { name: "debt-finder", workspaces: ["packages/*"], packageManager: "pnpm@9.0.0" });
   json(join(repo, "npm-shrinkwrap.json"), { lockfileVersion: 3 });
   const result = await inspect(f, repo);
   assert.equal(item(result, "package-workflow").status, "review");
@@ -193,7 +193,7 @@ test("manifest field errors, workspace workflows, shrinkwrap and self-installati
   assert.equal(item(result, "shrinkwrap").status, "review");
 });
 
-test("directory conflicts and lockfiles missing Debt Watcher are not treated as ready", async (t) => {
+test("directory conflicts and lockfiles missing Debt Finder are not treated as ready", async (t) => {
   const f = fixture(t);
   const repo = f.repository();
   mkdirSync(join(repo, configFilename));

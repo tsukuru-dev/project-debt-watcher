@@ -13,7 +13,7 @@ export interface PhpExtractorOptions {
 }
 export interface PhpCommentExtractor {
   backend: { kind: "official"; name: "php-token-get-all"; version: string; executable: string }
-    | { kind: "builtin"; name: "debt-watcher-php"; version: "1"; reason: string };
+    | { kind: "builtin"; name: "debt-finder-php"; version: "1"; reason: string };
   extract(source: string): Promise<CommentExtraction>;
 }
 
@@ -176,6 +176,6 @@ export async function createPhpCommentExtractor(options: PhpExtractorOptions = {
   const reason = mode === "builtin" ? "Built-in extraction was explicitly selected."
     : failures.length ? failures.join("; ") : "No PHP executable was found on PATH.";
   if (mode === "official") throw new Error(`Official PHP extraction is unavailable. ${reason}`);
-  return { backend: { kind: "builtin", name: "debt-watcher-php", version: "1", reason },
+  return { backend: { kind: "builtin", name: "debt-finder-php", version: "1", reason },
     async extract(source) { checkSize(source); return extractPhpComments(source); } };
 }

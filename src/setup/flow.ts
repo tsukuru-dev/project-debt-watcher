@@ -53,7 +53,7 @@ export async function prepareReportRepository(options: ConfigurationScope, conte
   const ready = async (): Promise<PreparedRepository> => ({ location, configuration: await loadConfiguration(location) });
   const verificationUnavailable = (error: unknown): Promise<PreparedRepository> => {
     context.writeOutput("Could not verify team installation: " + message(error)
-      + "\nContinuing with the valid repository configuration. Run debt-watcher init to check the installation.\n");
+      + "\nContinuing with the valid repository configuration. Run debt-finder init to check the installation.\n");
     return ready();
   };
   if (!isInteractive(context.env, context.interactive)) {
@@ -67,7 +67,7 @@ export async function prepareReportRepository(options: ConfigurationScope, conte
     if (source !== null) {
       const pkg = parsePackageObject(source);
       const declarations = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]
-        .filter((key) => isRecord(pkg[key]) && Object.hasOwn(pkg[key], "debt-watcher"));
+        .filter((key) => isRecord(pkg[key]) && Object.hasOwn(pkg[key], "debt-finder"));
       preserveProduction = declarations.length === 1 && declarations[0] === "dependencies";
     }
   }
@@ -82,7 +82,7 @@ export async function prepareReportRepository(options: ConfigurationScope, conte
   try { declined = await setupDeclined(location.repositoryRoot, context); }
   catch (error) { context.writeOutput(message(error) + "\n"); }
   if (declined) {
-    if (!configuration) throw new Error("Repository configuration is missing. Run debt-watcher init to complete team setup.");
+    if (!configuration) throw new Error("Repository configuration is missing. Run debt-finder init to complete team setup.");
     return ready();
   }
   if (!outstanding.length) {
@@ -107,8 +107,8 @@ export async function prepareReportRepository(options: ConfigurationScope, conte
     if (!(error instanceof SetupCancelledError)) throw error;
     try { await rememberSetupDecision(location.repositoryRoot, true, context); }
     catch (stateError) { context.writeOutput("Could not remember this decision: " + message(stateError) + "\n"); }
-    context.writeOutput("Setup declined. Run debt-watcher init whenever you want to set up or repair this repository.\n");
-    if (!configuration) throw new Error("Report cancelled: required repository configuration is missing. Run debt-watcher init.");
+    context.writeOutput("Setup declined. Run debt-finder init whenever you want to set up or repair this repository.\n");
+    if (!configuration) throw new Error("Report cancelled: required repository configuration is missing. Run debt-finder init.");
   }
   return ready();
 }

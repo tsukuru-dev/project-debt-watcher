@@ -32,8 +32,8 @@ function harness(f, repo, overrides = {}) {
 
 function complete(f, repo, production = false) {
   f.writeConfig(repo);
-  const pkg = { private: true, scripts: { "debt-watcher": "debt-watcher" },
-    [production ? "dependencies" : "devDependencies"]: { "debt-watcher": "^1.2.3" } };
+  const pkg = { private: true, scripts: { "debt-finder": "debt-finder" },
+    [production ? "dependencies" : "devDependencies"]: { "debt-finder": "^1.2.3" } };
   writeFileSync(join(repo, "package.json"), JSON.stringify(pkg));
   writeFileSync(join(repo, ".gitignore"), "node_modules/\n");
   materialise(repo, pkg);
@@ -45,7 +45,7 @@ test("accepted first use creates team setup, opens config, and resumes exact rep
   const result = await h.invoke(["graveyard", "--save", "--summary", "blame", "--fresh", "60", "--filter", "includefresh=true"]);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(read(join(repo, configFilename)), template);
-  assert.equal(read(join(repo, "package.json")).scripts["debt-watcher"], "debt-watcher");
+  assert.equal(read(join(repo, "package.json")).scripts["debt-finder"], "debt-finder");
   assert.deepEqual(h.calls.editors, [join(repo, configFilename)]);
   assert.equal(h.calls.prompts.length, 1);
   assert.deepEqual(h.calls.reports[0].args, { save: true, summary: "blame", fresh: 60, filter: { includeFresh: true } });
@@ -96,7 +96,7 @@ test("declining missing-config setup is remembered per repo; explicit init retri
   assert.equal(h.calls.reports.length, 0);
   assert.equal(h.setup.calls.length, 0);
   const again = await h.invoke(["graveyard"], { terminal: { interactive: true, confirm: forbidden } });
-  assert.match(again.stderr, /Run debt-watcher init/);
+  assert.match(again.stderr, /Run debt-finder init/);
   assert.equal(await setupDeclined(f.repository("other"), { env: f.env, homeDirectory: f.home }), false);
   const retried = await h.invoke(["init"]);
   assert.equal(retried.status, 0, retried.stderr);
@@ -123,7 +123,7 @@ test("cancelling defaults selection or script replacement writes no project file
     const f = fixture(t), repo = f.repository(action);
     const h = harness(f, repo);
     f.writeConfig(f.personalDirectory);
-    if (action === "script") writeFileSync(join(repo, "package.json"), '{"scripts":{"debt-watcher":"custom"}}');
+    if (action === "script") writeFileSync(join(repo, "package.json"), '{"scripts":{"debt-finder":"custom"}}');
     let questions = 0;
     const result = await h.invoke(["graveyard"], { terminal: { interactive: true,
       confirm: async () => action === "selection" || ++questions === 1,
@@ -132,7 +132,7 @@ test("cancelling defaults selection or script replacement writes no project file
     assert.equal(existsSync(join(repo, configFilename)), false);
     assert.equal(existsSync(join(repo, "node_modules")), false);
     assert.equal(await setupDeclined(repo, { env: f.env, homeDirectory: f.home }), true);
-    if (action === "script") assert.equal(read(join(repo, "package.json")).scripts["debt-watcher"], "custom");
+    if (action === "script") assert.equal(read(join(repo, "package.json")).scripts["debt-finder"], "custom");
   }
 });
 
@@ -186,11 +186,11 @@ test("automatic repair verifies executable and lockfile integrity before continu
     complete(f, repo);
     const original = readFileSync(join(repo, configFilename), "utf8");
     if (defect === "executable") {
-      const path = join(repo, "node_modules", "debt-watcher", "package.json");
-      writeFileSync(path, JSON.stringify({ ...read(path), bin: { "debt-watcher": "missing.js" } }));
+      const path = join(repo, "node_modules", "debt-finder", "package.json");
+      writeFileSync(path, JSON.stringify({ ...read(path), bin: { "debt-finder": "missing.js" } }));
     } else if (defect === "lockfile") {
       const path = join(repo, "package-lock.json"), lock = read(path);
-      lock.packages["node_modules/debt-watcher"].version = "0.9.0";
+      lock.packages["node_modules/debt-finder"].version = "0.9.0";
       writeFileSync(path, JSON.stringify(lock));
     }
     const h = harness(f, repo);
@@ -215,8 +215,8 @@ test("automatic repair verifies executable and lockfile integrity before continu
 test("declined executable repair is remembered and valid configuration still reports", async (t) => {
   const f = fixture(t), repo = f.repository();
   complete(f, repo);
-  const path = join(repo, "node_modules", "debt-watcher", "package.json");
-  writeFileSync(path, JSON.stringify({ ...read(path), bin: { "debt-watcher": "missing.js" } }));
+  const path = join(repo, "node_modules", "debt-finder", "package.json");
+  writeFileSync(path, JSON.stringify({ ...read(path), bin: { "debt-finder": "missing.js" } }));
   const h = harness(f, repo);
   const first = await h.invoke(["graveyard"], { terminal: { interactive: true, confirm: async () => false } });
   assert.equal(first.status, 0, first.stderr);
@@ -253,7 +253,7 @@ test("unavailable verification during script repair permits reporting but explic
   const f = fixture(t), repo = f.repository();
   complete(f, repo);
   const packagePath = join(repo, "package.json"), pkg = read(packagePath);
-  delete pkg.scripts["debt-watcher"];
+  delete pkg.scripts["debt-finder"];
   writeFileSync(packagePath, JSON.stringify(pkg));
   const files = ["package.json", "package-lock.json", ".gitignore", configFilename];
   const before = files.map((name) => readFileSync(join(repo, name), "utf8"));
@@ -278,7 +278,7 @@ test("verification errors after setup writes still block reporting with valid co
   const f = fixture(t), repo = f.repository();
   complete(f, repo);
   const packagePath = join(repo, "package.json"), pkg = read(packagePath);
-  delete pkg.scripts["debt-watcher"];
+  delete pkg.scripts["debt-finder"];
   writeFileSync(packagePath, JSON.stringify(pkg));
   const h = harness(f, repo);
   let checks = 0;
@@ -288,7 +288,7 @@ test("verification errors after setup writes still block reporting with valid co
   } } });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Setup is incomplete/);
-  assert.equal(read(packagePath).scripts["debt-watcher"], "debt-watcher");
+  assert.equal(read(packagePath).scripts["debt-finder"], "debt-finder");
   assert.equal(h.calls.reports.length, 0);
   assert.equal(h.calls.editors.length, 0);
   assert.deepEqual(readdirSync(f.home), []);
@@ -360,9 +360,9 @@ test("help, version, dry-run, listing, failed validation and snapshot export do 
 test("global installation detection distinguishes local/cache/development copies and custom npm prefixes", async (t) => {
   const f = fixture(t);
   const globalRoot = join(f.root, "custom-prefix", "node_modules");
-  const globalPackage = join(globalRoot, "debt-watcher");
-  const localPackage = join(f.root, "local", "node_modules", "debt-watcher");
-  const cachePackage = join(f.root, "cache", "_npx", "hash", "node_modules", "debt-watcher");
+  const globalPackage = join(globalRoot, "debt-finder");
+  const localPackage = join(f.root, "local", "node_modules", "debt-finder");
+  const cachePackage = join(f.root, "cache", "_npx", "hash", "node_modules", "debt-finder");
   for (const path of [globalPackage, localPackage, cachePackage]) mkdirSync(path, { recursive: true });
   const context = { cwd: f.root, env: f.env };
   assert.equal(await isGlobalInstallation(globalPackage, context, async () => globalRoot), true);

@@ -69,13 +69,13 @@ export async function scanCommittedComments(context: GitContext, branches: reado
       case "go": session = await createGoCommentExtractor(options.go); break;
       case "php": session = await createPhpCommentExtractor(options.php); break;
       case "javascript": case "jsx": case "typescript": case "tsx":
-        session = builtin("debt-watcher-javascript", (source) => extractJavaScriptComments(source, language)); break;
+        session = builtin("debt-finder-javascript", (source) => extractJavaScriptComments(source, language)); break;
       case "c": case "cpp":
-        session = builtin("debt-watcher-c", (source) => extractCComments(source, language)); break;
-      case "css": session = builtin("debt-watcher-css", extractCssComments); break;
-      case "html": session = builtin("debt-watcher-html", extractHtmlComments); break;
-      case "django-template": session = builtin("debt-watcher-django", extractDjangoTemplateComments); break;
-      case "rust": session = builtin("debt-watcher-rust", extractRustComments); break;
+        session = builtin("debt-finder-c", (source) => extractCComments(source, language)); break;
+      case "css": session = builtin("debt-finder-css", extractCssComments); break;
+      case "html": session = builtin("debt-finder-html", extractHtmlComments); break;
+      case "django-template": session = builtin("debt-finder-django", extractDjangoTemplateComments); break;
+      case "rust": session = builtin("debt-finder-rust", extractRustComments); break;
     }
     sessions.set(language, session);
     backends[language] = session.backend;

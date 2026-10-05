@@ -5,7 +5,7 @@ import { buildCodeReportView, buildCombinedReportView } from "../../dist/reports
 import { buildAuthorSummary, buildTypeSummary } from "../../dist/reports/summaries.js";
 import { renderAuthorSummaryTerminal, renderTypeSummaryTerminal } from "../../dist/reports/render/terminal.js";
 
-const settings = JSON.parse(readFileSync(new URL("../../templates/debt-watcher.config.json", import.meta.url), "utf8"));
+const settings = JSON.parse(readFileSync(new URL("../../templates/debt-finder.config.json", import.meta.url), "utf8"));
 const position = { offset: 0, line: 1, column: 1 };
 
 function finding(path, authoredAt, authorName, authorEmail, category, offset = 0) {

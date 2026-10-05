@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { latestReport, rememberReport, reportSnapshotPath } from "../../dist/storage/snapshots.js";
 
 test("report snapshots survive separate reads and stay isolated by repository", async (t) => {
-  const root = mkdtempSync(join(tmpdir(), "debt-watcher-snapshot-"));
+  const root = mkdtempSync(join(tmpdir(), "debt-finder-snapshot-"));
   t.after(() => {
     assert.equal(dirname(resolve(root)), resolve(tmpdir()));
     rmSync(root, { recursive: true, force: true });
