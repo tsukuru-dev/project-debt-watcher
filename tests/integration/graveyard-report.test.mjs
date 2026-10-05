@@ -34,8 +34,9 @@ test("graveyard reports committed code across local or remote refs with temporar
   };
   const normal = await invoke([]);
   assert.equal(normal.status, 0, normal.stderr);
-  assert.match(normal.stdout, /Code comments \(1\)/);
-  assert.match(normal.stdout, /🦖 \| \d+ days \| TODO \| main:legacy\.js:1 \| replace legacy route \| Demo Older/);
+  assert.match(normal.stdout, /^🪦  PROJECT GRAVEYARD\nGenerated: .+\nBranches scanned: local\/main\nGroup: type\nFilters: includefresh=false\nOrder: oldnew\n/m);
+  assert.match(normal.stdout, /CODE DEBT +1\n─+/);
+  assert.match(normal.stdout, /🦖\s+[\d,]+d\s+TODO\s+replace legacy route\s+·\s+main:legacy\.js:1\s+·\s+Demo Older/);
   assert.ok(!normal.stdout.includes("dirty working-tree text"));
   assert.ok(!normal.stdout.includes("recent cleanup"));
   const normalClosingLine = normal.stdout.trimEnd().split("\n").at(-1);
@@ -48,19 +49,21 @@ test("graveyard reports committed code across local or remote refs with temporar
 
   const byType = await invoke(["--group", "type"]);
   assert.equal(byType.status, 0, byType.stderr);
-  assert.match(byType.stdout, /Graveyard — project debt/);
-  assert.match(byType.stdout, /Code comments \(1\)/);
+  assert.match(byType.stdout, /🪦  PROJECT GRAVEYARD/);
+  assert.match(byType.stdout, /CODE DEBT +1\n─+/);
   const byAuthor = await invoke(["--group", "author", "--filter", "includefresh=true"]);
   assert.equal(byAuthor.status, 0, byAuthor.stderr);
-  assert.match(byAuthor.stdout, /Graveyard — project debt grouped by author/);
-  assert.match(byAuthor.stdout, /Demo Older <older@example\.test> \(1\)/);
-  assert.match(byAuthor.stdout, /Debt Watcher tests <tests@example\.invalid> \(2\)/);
-  assert.match(byAuthor.stdout, /days \| code \| TODO/);
-  assert.match(byAuthor.stdout, /days \| branch \| [a-f0-9]{40}/);
+  assert.match(byAuthor.stdout, /🪦  PROJECT GRAVEYARD — BY AUTHOR/);
+  assert.match(byAuthor.stdout, /DEMO OLDER <OLDER@EXAMPLE\.TEST> \(1\)/);
+  assert.match(byAuthor.stdout, /DEBT WATCHER TESTS <TESTS@EXAMPLE\.INVALID> \(2\)/);
+  assert.match(byAuthor.stdout, /Group: author\nFilters: includefresh=true/);
+  assert.match(byAuthor.stdout, /Oldest: Demo Older <older@example\.test> · CODE · [\d,]+d · TODO/);
+  assert.match(byAuthor.stdout, /[\d,]+d\s+CODE TODO/);
+  assert.match(byAuthor.stdout, /[\d,]+d\s+BRANCH main/);
   const byAge = await invoke(["--group", "age", "--filter", "includefresh=true"]);
   assert.equal(byAge.status, 0, byAge.stderr);
-  assert.match(byAge.stdout, /Graveyard — project debt grouped by age/);
-  assert.ok(byAge.stdout.indexOf("Fossil (1)") < byAge.stdout.indexOf("Fresh (2)"));
+  assert.match(byAge.stdout, /🪦  PROJECT GRAVEYARD — BY AGE/);
+  assert.ok(byAge.stdout.indexOf("FOSSIL (1)") < byAge.stdout.indexOf("FRESH (2)"));
   const savedGrouped = await invoke(["--group", "author", "--filter", "includefresh=true",
     "--save", "--output", "./grouped.md", "--repo", relative(f.root, repo)], f.root);
   assert.equal(savedGrouped.status, 0, savedGrouped.stderr);
@@ -75,20 +78,21 @@ test("graveyard reports committed code across local or remote refs with temporar
 
   const summary = await invoke(["--summary"]);
   assert.equal(summary.status, 0, summary.stderr);
-  assert.match(summary.stdout, /Graveyard — summary by type/);
-  assert.match(summary.stdout, /Total debt: 1/);
-  assert.match(summary.stdout, /Oldest: code comment \| \d+ days \| main:legacy\.js:1/);
-  assert.ok(!summary.stdout.includes("replace legacy route"));
+  assert.match(summary.stdout, /SUMMARY BY TYPE/);
+  assert.match(summary.stdout, /TOTAL\s+1/);
+  assert.match(summary.stdout, /Oldest: CODE · [\d,]+d · TODO · replace legacy route · main:legacy\.js:1/);
+  assert.match(summary.stdout, /Summary: type\nFilters: includefresh=false/);
   const filteredSummary = await invoke(["--summary", "types", "--filter", "includefresh=true"]);
   assert.equal(filteredSummary.status, 0, filteredSummary.stderr);
-  assert.match(filteredSummary.stdout, /Code comments: 2/);
+  assert.match(filteredSummary.stdout, /CODE DEBT\s+2/);
   const savedSummary = await invoke(["--summary", "--save", "--output", "./summary.md",
     "--repo", relative(f.root, repo)], f.root);
   assert.equal(savedSummary.status, 0, savedSummary.stderr);
   const summaryMarkdown = readFileSync(join(f.root, "summary.md"), "utf8");
   assert.match(summaryMarkdown, /# Graveyard — summary by type/);
   assert.match(summaryMarkdown, /Total debt: 1/);
-  assert.ok(!summaryMarkdown.includes("replace legacy route"));
+  assert.match(summaryMarkdown, /Oldest: CODE · \d+ days · TODO · replace legacy route · main:legacy\.js:1/);
+  assert.ok(!summaryMarkdown.includes("| Age | Days |"));
   assert.ok(summaryMarkdown.includes(`*${savedSummary.stdout.trimEnd().split("\n").at(-2)}*`));
   const latestSummary = await invoke(["--save", "latest", "--output", "./summary-copy.md",
     "--repo", relative(f.root, repo)], f.root);
@@ -96,18 +100,19 @@ test("graveyard reports committed code across local or remote refs with temporar
   assert.equal(readFileSync(join(f.root, "summary-copy.md"), "utf8"), summaryMarkdown);
   const blameSummary = await invoke(["--summary", "blame", "--filter", "includefresh=true"]);
   assert.equal(blameSummary.status, 0, blameSummary.stderr);
-  assert.match(blameSummary.stdout, /Graveyard — summary by author/);
-  assert.match(blameSummary.stdout, /Total debt: 3/);
-  assert.match(blameSummary.stdout, /Demo Older <older@example\.test>: 1/);
-  assert.match(blameSummary.stdout, /Debt Watcher tests <tests@example\.invalid>: 2/);
-  assert.ok(!blameSummary.stdout.includes("replace legacy route"));
+  assert.match(blameSummary.stdout, /SUMMARY BY AUTHOR/);
+  assert.match(blameSummary.stdout, /TOTAL 3/);
+  assert.match(blameSummary.stdout, /Demo Older <older@example\.test>\s+1\s+·/);
+  assert.match(blameSummary.stdout, /Debt Watcher tests <tests@example\.invalid>\s+2\s+·/);
+  assert.match(blameSummary.stdout, /Oldest: Demo Older <older@example\.test> · CODE · [\d,]+d · TODO/);
   const savedBlame = await invoke(["--summary", "blame", "--save", "--output", "./blame.md",
     "--repo", relative(f.root, repo)], f.root);
   assert.equal(savedBlame.status, 0, savedBlame.stderr);
   const blameMarkdown = readFileSync(join(f.root, "blame.md"), "utf8");
   assert.match(blameMarkdown, /# Graveyard — summary by author/);
   assert.match(blameMarkdown, /Demo Older &lt;older@example\.test&gt;/);
-  assert.ok(!blameMarkdown.includes("replace legacy route"));
+  assert.match(blameMarkdown, /Oldest: Demo Older &lt;older@example\.test&gt; · CODE · \d+ days · TODO/);
+  assert.ok(!blameMarkdown.includes("| Age | Days |"));
   assert.ok(blameMarkdown.includes(`*${savedBlame.stdout.trimEnd().split("\n").at(-2)}*`));
   const latestBlame = await invoke(["--save", "latest", "--output", "./blame-copy.md",
     "--repo", relative(f.root, repo)], f.root);
@@ -116,23 +121,24 @@ test("graveyard reports committed code across local or remote refs with temporar
 
   const included = await invoke(["--filter", "includefresh=true", "--order", "newold"]);
   assert.equal(included.status, 0, included.stderr);
-  assert.match(included.stdout, /Code comments \(2\)/);
+  assert.match(included.stdout, /TOTAL : 3\n\nCODE : 2  ·  BRANCHES : 1\nAGES /);
   assert.ok(included.stdout.indexOf("recent cleanup") < included.stdout.indexOf("replace legacy route"));
-  assert.match(included.stdout, /Oldest code comment: \d+ days \| main:legacy\.js:1/);
+  assert.match(included.stdout, /Oldest: CODE · [\d,]+d · TODO · replace legacy route · main:legacy\.js:1/);
 
   const author = await invoke(["--filter", "author=OLDER", "--filter", "includefresh=true"]);
   assert.equal(author.status, 0, author.stderr);
-  assert.match(author.stdout, /Code comments \(1\)/);
+  assert.match(author.stdout, /Filters: author=OLDER · includefresh=true/);
+  assert.match(author.stdout, /CODE : 1/);
   assert.ok(!author.stdout.includes("recent cleanup"));
 
   const oneMarker = await invoke(["--markers", "FIXME", "--filter", "includefresh=true"]);
   assert.equal(oneMarker.status, 0, oneMarker.stderr);
-  assert.match(oneMarker.stdout, /Code comments \(1\)/);
+  assert.match(oneMarker.stdout, /CODE : 1/);
   assert.ok(!oneMarker.stdout.includes("replace legacy route"));
 
   const remote = await invoke(["--remote", "--all", "--repo", relative(f.root, repo)], f.root);
   assert.equal(remote.status, 0, remote.stderr);
-  assert.match(remote.stdout, /Branches: remote\/origin\/main/);
+  assert.match(remote.stdout, /Branches scanned: remote\/origin\/main/);
   assert.match(remote.stdout, /origin\/main:legacy\.js:1/);
   assert.equal(readFileSync(configPath, "utf8"), beforeConfig);
   assert.equal(f.git(repo, ["status", "--porcelain=v1"]), beforeStatus);
@@ -220,32 +226,32 @@ test("graveyard includes stale local and remote branches in reports and summarie
 
   const normal = await f.invoke(["graveyard"], repo);
   assert.equal(normal.status, 0, normal.stderr);
-  assert.match(normal.stdout, /Total debt \(1\)/);
-  assert.match(normal.stdout, /Code comments \(0\)/);
-  assert.match(normal.stdout, /Stale branches \(1\)/);
+  assert.match(normal.stdout, /TOTAL : 1\n\nCODE : 0  ·  BRANCHES : 1\nAGES /);
+  assert.match(normal.stdout, /CODE DEBT/);
+  assert.match(normal.stdout, /STALE BRANCHES/);
   assert.match(normal.stdout, /legacy/);
-  assert.match(normal.stdout, /Oldest branch: \d+ days \| legacy/);
+  assert.match(normal.stdout, /Oldest: BRANCH · [\d,]+d · legacy · [a-f0-9]{10}/);
   assert.ok(!normal.stdout.includes("recent branch"));
 
   const codeOnly = await f.invoke(["graveyard", "--filter", "type=code"], repo);
   assert.equal(codeOnly.status, 0, codeOnly.stderr);
-  assert.match(codeOnly.stdout, /Total debt \(0\)/);
+  assert.match(codeOnly.stdout, /TOTAL : 0/);
   const branchOnly = await f.invoke(["graveyard", "--filter", "type=branches",
     "--filter", "author=old-branch@example.test"], repo);
   assert.equal(branchOnly.status, 0, branchOnly.stderr);
-  assert.match(branchOnly.stdout, /Total debt \(1\)/);
+  assert.match(branchOnly.stdout, /TOTAL : 1/);
   const wrongAuthor = await f.invoke(["graveyard", "--filter", "type=branches",
     "--filter", "author=nobody"], repo);
   assert.equal(wrongAuthor.status, 0, wrongAuthor.stderr);
-  assert.match(wrongAuthor.stdout, /Total debt \(0\)/);
+  assert.match(wrongAuthor.stdout, /TOTAL : 0/);
 
   const types = await f.invoke(["graveyard", "--summary"], repo);
   assert.equal(types.status, 0, types.stderr);
-  assert.match(types.stdout, /Stale branches: 1/);
-  assert.match(types.stdout, /Oldest: branch \| \d+ days \| legacy/);
+  assert.match(types.stdout, /STALE BRANCHES\s+1/);
+  assert.match(types.stdout, /Oldest: BRANCH · [\d,]+d · legacy · [a-f0-9]{10}/);
   const authors = await f.invoke(["graveyard", "--summary", "blame"], repo);
   assert.equal(authors.status, 0, authors.stderr);
-  assert.match(authors.stdout, /Old Branch Author <old-branch@example\.test> \(branches\): 1/);
+  assert.match(authors.stdout, /Old Branch Author <old-branch@example\.test> \(branches\)\s+1\s+·/);
 
   const saved = await f.invoke(["graveyard", "--save", "--output", "./branch-report.md"], repo);
   assert.equal(saved.status, 0, saved.stderr);
@@ -255,7 +261,7 @@ test("graveyard includes stale local and remote branches in reports and summarie
 
   const remote = await f.invoke(["graveyard", "--remote"], repo);
   assert.equal(remote.status, 0, remote.stderr);
-  assert.match(remote.stdout, /Stale branches \(1\)/);
+  assert.match(remote.stdout, /BRANCHES : 1/);
   assert.match(remote.stdout, /origin\/legacy/);
 });
 
@@ -275,7 +281,7 @@ test("graveyard links exact code lines and branch commits for matching hosted re
   assert.equal(local.status, 0, local.stderr);
   const editorLink = `vscode://file${pathToFileURL(join(repo, "old code.js")).pathname}:1:1`;
   assert.ok(local.stdout.includes(`\u001b]8;;${editorLink}\u0007main:old code.js:1\u001b]8;;\u0007`));
-  assert.ok(local.stdout.includes(`\u001b]8;;https://github.com/example/debt-watcher/commit/${commit}\u0007${commit}\u001b]8;;\u0007`));
+  assert.ok(local.stdout.includes(`\u001b]8;;https://github.com/example/debt-watcher/commit/${commit}\u0007${commit.slice(0, 10)}\u001b]8;;\u0007`));
   const markdown = readFileSync(join(repo, "linked.md"), "utf8");
   assert.ok(markdown.includes(`[main:old code.js:1](https://github.com/example/debt-watcher/blob/${commit}/old%20code.js#L1)`));
   assert.ok(markdown.includes(`[${commit}](https://github.com/example/debt-watcher/commit/${commit})`));

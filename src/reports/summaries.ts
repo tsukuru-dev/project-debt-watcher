@@ -3,9 +3,17 @@ import type { CodeFinding, CodeReportView, CombinedReportView } from "./types.js
 import type { BranchTipFinding } from "../scanners/branches.js";
 import { compareCodeFindings } from "./ordering.js";
 import { authorIdentity } from "./grouping.js";
+import type { BranchSnapshot } from "../git/branches.js";
+import type { ReportFilters } from "../commands/arguments.js";
+
+interface SummaryContext {
+  branches: BranchSnapshot[];
+  filters: ReportFilters & { includeFresh: boolean };
+  order: "oldnew" | "newold";
+}
 
 /** The type summary shares the detailed report's selected findings and totals. */
-export interface TypeSummary {
+export interface TypeSummary extends SummaryContext {
   generatedAt: string;
   branchCount: number;
   counts: { total: number; code: number; branches: number; categories: Record<AgeCategory, number> };
@@ -16,7 +24,8 @@ export interface TypeSummary {
 
 export function buildTypeSummary(view: CodeReportView | CombinedReportView): TypeSummary {
   const combined = "branchFindings" in view;
-  return { generatedAt: view.generatedAt, branchCount: view.branches.length,
+  return { generatedAt: view.generatedAt, branches: view.branches, filters: view.filters,
+    order: view.order, branchCount: view.branches.length,
     counts: { total: view.counts.total, code: view.counts.code,
       branches: combined ? view.counts.branches : 0,
       categories: { ...view.counts.categories } },
@@ -35,7 +44,7 @@ export interface AuthorGroup {
   oldest: CodeFinding | BranchTipFinding;
 }
 
-export interface AuthorSummary {
+export interface AuthorSummary extends SummaryContext {
   generatedAt: string;
   branchCount: number;
   total: number;
@@ -85,7 +94,8 @@ export function buildAuthorSummary(view: CodeReportView | CombinedReportView): A
     return byAge * direction || a.label.localeCompare(b.label) || a.identity.localeCompare(b.identity);
   });
   const combined = "branchFindings" in view;
-  return { generatedAt: view.generatedAt, branchCount: view.branches.length,
+  return { generatedAt: view.generatedAt, branches: view.branches, filters: view.filters,
+    order: view.order, branchCount: view.branches.length,
     total: view.counts.total, groups: ordered,
     oldest: combined ? view.oldest?.finding : view.oldest,
     oldestKind: combined ? view.oldest?.kind : view.oldest ? "code" : undefined,

@@ -85,7 +85,7 @@ test("type summary uses the filtered counts and oldest item without detailed row
   assert.equal(summary.oldest, older);
   assert.equal(summary.unscannedCount, 1);
   const printed = renderTypeSummaryTerminal(summary);
-  assert.match(printed, /Code comments: 2/);
+  assert.match(printed, /CODE DEBT\s+2/);
   assert.match(printed, /Unscanned files: 1/);
   assert.ok(!printed.includes("src/c.js"));
   assert.ok(!printed.includes("Alex Smith"));
@@ -109,7 +109,7 @@ test("author summary groups by identity, orders groups by oldest finding, and la
   assert.equal(grouped.oldest, older);
   assert.equal(grouped.unscannedCount, 1);
   const printed = renderAuthorSummaryTerminal(grouped);
-  assert.match(printed, /Alex Alias <alex@example\.test>: 2/);
+  assert.match(printed, /Alex Alias <alex@example\.test>\s+2\s+·/);
   assert.ok(!printed.includes("src/alias.js"));
   const reverse = buildAuthorSummary(buildCodeReportView({ ...snapshot, findings }, { order: "newold" }));
   assert.deepEqual(reverse.groups.map(({ label }) => label),

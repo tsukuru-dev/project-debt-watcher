@@ -273,15 +273,34 @@ Issue provider support and authentication requirements are still to be defined.
 
 ### Example
 
-The report follows the following format:
+The CLI uses aligned columns and section dividers. For example:
 
-Each section will display its item count on the right, with an age indicator on each row.
+```text
+🪦  PROJECT GRAVEYARD
+Generated: 2026-10-05T16:44:51.643Z
+Branches scanned: local/main, local/fix/webhook-retry
+Group: type
+Filters: includefresh=false
+Order: oldnew
 
-| Section | Row contents |
-| --- | --- |
-| Code | Age emoji, days old, linked comment marker, comment text, author when requested |
-| Issues (planned) | Age emoji, days old, linked issue ID, issue title, author |
-| Stale branches | Age emoji, days since the last commit, linked commit ID, branch name, last commit author |
+CODE DEBT                                      2
+────────────────────────────────────────────────
+🦖  1,204d  HACK   Temporary auth bypass  ·  main:src/auth.ts:18  ·  Ada
+💀     42d  TODO   Handle malformed URLs   ·  main:src/url.ts:7    ·  Ben
+
+STALE BRANCHES                                 1
+────────────────────────────────────────────────
+🪦   75d  fix/webhook-retry  ·  a13f0c2e47  ·  Ada
+
+TOTAL : 3
+
+CODE : 2  ·  BRANCHES : 1
+AGES  🌱 0  💀 1  🪦 1  🦖 1
+
+Oldest: CODE · 1,204d · HACK · Temporary auth bypass · main:src/auth.ts:18
+```
+
+The source location and abbreviated commit ID at the end of each row are clickable when a matching target is available. Their links use the full commit ID. Authors appear when `showAuthors` is enabled. Issue rows and their section will be added with issue scanning. Saved Markdown reports use tables and web links instead of the terminal layout.
 
 The report will end with a debt summary containing:
 

@@ -92,9 +92,8 @@ looks at current Git repo -> scans source files -> finds comments in code -> git
 
 Tool can inspect git remote get-url origin although that has to be done via command where you can apply it to specific branches or all branches on remote etc but by default it applies to all branches on local
 
-Entries contain clickable terminal links + if detect a Github/gitlab remote then generate github/gitlab remote links
+Detailed terminal output uses an aligned, table-like layout with `🪦  PROJECT GRAVEYARD` at the top, uppercase section headings and dividers, compact right-aligned ages such as `1,204d`, and no pipe separators. Keep the marker or branch name in its own aligned column and the description after it. Put the clickable source location or abbreviated commit ID and the author at the end of each row. The underlying commit link uses the full ID. Totals, age counts, oldest finding, generation time, scanned branches, unscanned-file warnings, and the closing line follow the sections. Issue rows and their section appear only after issue scanning exists. Apply the same visual style to grouped views and terminal summaries; saved Markdown retains its own tables and portable links.
 
-Code Total at right side
 unresolved comments in code
 // TODO:
 // FIXME:
@@ -103,15 +102,7 @@ unresolved comments in code
 // TEMP:
 // WORKAROUND:
 
-CLI to look like:
-emoji for how old| days old | code type (clickable) | rest of the comment | author
-
-Issues Total at right side
-CLI to look like:
-emoji for how old| days old | Issue ID (clickable) | Issue name | author
-
-Stale Branches Total at right side
-emoji for how old| last commit days old | last commit ID (clickable) | Branch Name | last commit author
+When implemented, issue rows use the linked issue ID, title, and author. Stale branch rows show the branch name first, with the linked last commit ID and last commit author at the end.
 
 Total debt:
 Oldest: Debt type and details
