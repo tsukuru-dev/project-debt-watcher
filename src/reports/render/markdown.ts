@@ -1,6 +1,7 @@
 import type { CodeFinding, CodeReportView, CombinedReportView, UnscannedFile } from "../types.js";
 import type { BranchTipFinding } from "../../scanners/branches.js";
 import type { AuthorSummary, TypeSummary } from "../summaries.js";
+import type { DetailedGroup } from "../grouping.js";
 
 const AGE_ICONS = { fresh: "🌱", ageing: "💀", buried: "🪦", fossil: "🦖" } as const;
 
@@ -123,6 +124,58 @@ export function renderCombinedReportMarkdown(view: CombinedReportView,
   return lines.join("\n") + "\n";
 }
 
+export function renderGroupedReportMarkdown(view: CombinedReportView, groups: DetailedGroup[],
+  mode: "author" | "age",
+  context: { checkoutBranch: string | null; checkoutCommit: string | null; scope: "local" | "remote" },
+  links: MarkdownReportLinks = {}, closingLine?: string): string {
+  const lines = [`# Graveyard — project debt grouped by ${mode}`, "", `Generated: ${safe(view.generatedAt)}`,
+    `Generating checkout: ${safe(context.checkoutBranch ?? "detached HEAD")}`
+      + (context.checkoutCommit ? ` (${safe(context.checkoutCommit)})` : " (no commit)"),
+    `Scope: ${context.scope}`, `Scanned branches: ${view.branches.length}`, "", "## Summary", "",
+    `Total debt: ${view.counts.total}`, `Code comments: ${view.counts.code}`,
+    `Stale branches: ${view.counts.branches}`,
+    `Fresh: ${view.counts.categories.fresh} · Ageing: ${view.counts.categories.ageing}`
+      + ` · Buried: ${view.counts.categories.buried} · Fossil: ${view.counts.categories.fossil}`,
+    `Oldest: ${view.oldest?.kind === "code" ? `code comment · ${view.oldest.finding.ageDays} days · ${place(view.oldest.finding)}`
+      : view.oldest?.kind === "branches" ? `branch · ${view.oldest.finding.ageDays} days · ${safe(view.oldest.finding.branch.name)}`
+        : "None"}`, ""];
+  if (!groups.length) lines.push("No matching findings found.", "");
+  for (const group of groups) {
+    const label = mode === "age" ? group.label[0]!.toUpperCase() + group.label.slice(1) : group.label;
+    lines.push(`## ${safe(label)} (${group.findings.length})`, "",
+      mode === "age" && view.settings.showAuthors
+        ? "| Age | Days | Type | Reference | Details | Author |"
+        : "| Age | Days | Type | Reference | Details |",
+      mode === "age" && view.settings.showAuthors
+        ? "| --- | ---: | --- | --- | --- | --- |"
+        : "| --- | ---: | --- | --- | --- |");
+    for (const entry of group.findings) {
+      if (entry.kind === "code") {
+        const finding = entry.finding;
+        const cells = [`${AGE_ICONS[finding.category]} ${safe(finding.category)}`, String(finding.ageDays), "Code",
+          linked(safe(finding.primary.marker), links.sourceLink?.(finding)),
+          `${place(finding)} · ${safe(finding.comment.text) || "(no description)"}`];
+        if (mode === "age" && view.settings.showAuthors) cells.push(safe(finding.primary.attribution.authorName) || "Unknown");
+        lines.push(`| ${cells.join(" | ")} |`);
+      } else {
+        const finding = entry.finding;
+        const cells = [`${AGE_ICONS[finding.category]} ${safe(finding.category)}`, String(finding.ageDays), "Branch",
+          linked(safe(finding.branch.commitId), links.commitLink?.(finding)), safe(finding.branch.name)];
+        if (mode === "age" && view.settings.showAuthors) cells.push(safe(finding.authorName) || "Unknown");
+        lines.push(`| ${cells.join(" | ")} |`);
+      }
+    }
+    lines.push("");
+  }
+  if (view.unscanned.length) {
+    lines.push(`## Unscanned files (${view.unscanned.length})`, "", "Debt in these files is unknown.", "");
+    for (const file of view.unscanned) lines.push(`- ${safe(file.branch.name)}:${safe(file.file.path)} — ${reason(file)}`);
+    lines.push("");
+  }
+  if (closingLine) lines.push(`*${safe(closingLine)}*`, "");
+  return lines.join("\n") + "\n";
+}
+
 /** The saved type summary contains aggregate information, not detailed finding rows. */
 export function renderTypeSummaryMarkdown(summary: TypeSummary,
   context: { checkoutBranch: string | null; checkoutCommit: string | null; scope: "local" | "remote" },
@@ -153,7 +206,7 @@ export function renderAuthorSummaryMarkdown(summary: AuthorSummary,
     `Scope: ${context.scope}`, `Scanned branches: ${summary.branchCount}`, "",
     "| Author | Count | Oldest |", "| --- | ---: | --- |"];
   for (const group of summary.groups) {
-    const label = safe(group.label) + (group.kind === "branches" && group.identity !== "unknown" ? " (branches)" : "");
+    const label = safe(group.label) + (group.codeCount === 0 && group.branchCount > 0 && group.identity !== "unknown" ? " (branches)" : "");
     const location = group.kind === "code" ? place(group.oldest as CodeFinding)
       : safe((group.oldest as BranchTipFinding).branch.name);
     lines.push(`| ${label} | ${group.count} | ${group.oldest.ageDays} days · ${location} |`);

@@ -46,6 +46,33 @@ test("graveyard reports committed code across local or remote refs with temporar
   assert.match(readFileSync(join(f.root, "first-latest.md"), "utf8"), /Code comments: 1/);
   assert.ok(readFileSync(join(f.root, "first-latest.md"), "utf8").includes(`*${normalClosingLine}*`));
 
+  const byType = await invoke(["--group", "type"]);
+  assert.equal(byType.status, 0, byType.stderr);
+  assert.match(byType.stdout, /Graveyard — project debt/);
+  assert.match(byType.stdout, /Code comments \(1\)/);
+  const byAuthor = await invoke(["--group", "author", "--filter", "includefresh=true"]);
+  assert.equal(byAuthor.status, 0, byAuthor.stderr);
+  assert.match(byAuthor.stdout, /Graveyard — project debt grouped by author/);
+  assert.match(byAuthor.stdout, /Demo Older <older@example\.test> \(1\)/);
+  assert.match(byAuthor.stdout, /Debt Watcher tests <tests@example\.invalid> \(2\)/);
+  assert.match(byAuthor.stdout, /days \| code \| TODO/);
+  assert.match(byAuthor.stdout, /days \| branch \| [a-f0-9]{40}/);
+  const byAge = await invoke(["--group", "age", "--filter", "includefresh=true"]);
+  assert.equal(byAge.status, 0, byAge.stderr);
+  assert.match(byAge.stdout, /Graveyard — project debt grouped by age/);
+  assert.ok(byAge.stdout.indexOf("Fossil (1)") < byAge.stdout.indexOf("Fresh (2)"));
+  const savedGrouped = await invoke(["--group", "author", "--filter", "includefresh=true",
+    "--save", "--output", "./grouped.md", "--repo", relative(f.root, repo)], f.root);
+  assert.equal(savedGrouped.status, 0, savedGrouped.stderr);
+  const groupedMarkdown = readFileSync(join(f.root, "grouped.md"), "utf8");
+  assert.match(groupedMarkdown, /# Graveyard — project debt grouped by author/);
+  assert.match(groupedMarkdown, /\| Code \| TODO \|/);
+  assert.match(groupedMarkdown, /\| Branch \| [a-f0-9]{40} \|/);
+  const latestGrouped = await invoke(["--save", "latest", "--output", "./grouped-copy.md",
+    "--repo", relative(f.root, repo)], f.root);
+  assert.equal(latestGrouped.status, 0, latestGrouped.stderr);
+  assert.equal(readFileSync(join(f.root, "grouped-copy.md"), "utf8"), groupedMarkdown);
+
   const summary = await invoke(["--summary"]);
   assert.equal(summary.status, 0, summary.stderr);
   assert.match(summary.stdout, /Graveyard — summary by type/);
@@ -72,7 +99,7 @@ test("graveyard reports committed code across local or remote refs with temporar
   assert.match(blameSummary.stdout, /Graveyard — summary by author/);
   assert.match(blameSummary.stdout, /Total debt: 3/);
   assert.match(blameSummary.stdout, /Demo Older <older@example\.test>: 1/);
-  assert.match(blameSummary.stdout, /Debt Watcher tests <tests@example\.invalid>: 1/);
+  assert.match(blameSummary.stdout, /Debt Watcher tests <tests@example\.invalid>: 2/);
   assert.ok(!blameSummary.stdout.includes("replace legacy route"));
   const savedBlame = await invoke(["--summary", "blame", "--save", "--output", "./blame.md",
     "--repo", relative(f.root, repo)], f.root);

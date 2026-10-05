@@ -35,12 +35,12 @@ These can be configured based on your needs using the config file.
 Debt watcher finds lost branches by looking at latest commit dates. It reports ages and authors without changing your checkout.
 
 ### Reporting and filters
-The default `graveyard` report has code and branch sections. You can filter findings by debt type, author, or freshness; summaries can group counts by type or author. Issue reporting is planned.
+The default `graveyard` report groups detailed findings by type, with code and branch sections. Use `--group author` for author sections or `--group age` for Fresh, Ageing, Buried, and Fossil sections. Filters select findings before grouping; summaries show counts by type or author. Issue reporting is planned.
 
 Essentially commands exist that support the following:
 - showing all items including fresh items
 - grouping by type, age categories or authors
-- filtered reports so you only see eg a specific author or specific age.
+- filtered reports so you only see, for example, a specific author or debt type.
 
 **Age categories:** these thresholds for ageing (💀), buried (🪦), and fossil (🦖) items. Age categories have been configured as defaults (these are editable in the config file).
 
@@ -197,10 +197,12 @@ Repository settings are read from the currently checked-out worktree for the who
 
 ```sh
 npx debt-watcher graveyard
+npx debt-watcher graveyard --group type
+npx debt-watcher graveyard --group author
+npx debt-watcher graveyard --group age
 npx debt-watcher graveyard --summary
 npx debt-watcher graveyard --summary blame
 npx debt-watcher graveyard --filter type=branches
-npx debt-watcher graveyard --filter type=author
 npx debt-watcher graveyard --filter type=code,branches
 npx debt-watcher graveyard --filter author=Alex
 npx debt-watcher graveyard --filter includefresh=true --order newold
@@ -215,7 +217,7 @@ npx debt-watcher graveyard --fresh 45
 npx debt-watcher graveyard --fresh 38 --ageing 65 --buried 70
 ```
 
-`--summary` groups **counts** by debt type, while `--summary blame` groups them by author. `--filter` **selects findings** for either summary or the detailed report. `type` accepts `code` and `branches` today; `issues` is reserved for future support. `author` matches author names or emails, and `includefresh` accepts `true` or `false`. Repeat `--filter` for different keys, such as `--filter type=code --filter author=Alex`.
+`--group` changes the **detailed report's sections**; plain `graveyard` and `--group type` are equivalent. Author sections combine code and branch findings that share an email identity and show a count above their rows. Age sections follow `--order` and omit empty categories. `--summary` groups **counts** by debt type, while `--summary blame` groups them by author without detailed rows. Do not combine `--group` with `--summary`. `--filter` **selects findings** before either report. `type` accepts `code` and `branches` today; `issues` is reserved for future support. `author` matches author names or emails, and `includefresh` accepts `true` or `false`. Repeat `--filter` for different keys, such as `--filter type=code --filter author=Alex`.
 
 `--fresh`, `--ageing`, `--buried`, `--markers`, and `--order` temporarily override settings for one run. The default `oldnew` order puts older findings first within the code and branch sections; `newold` reverses each section. `--remote` scans remote-tracking branches **already fetched locally** from all remotes; it does not fetch. The current implementation already scans every branch in its selected local or remote scope, so `--all` does not widen that scope. Selecting individual branches is not implemented yet.
 

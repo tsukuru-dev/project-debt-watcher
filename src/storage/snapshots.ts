@@ -14,7 +14,7 @@ export interface LatestReportSnapshot {
   checkoutBranch: string | null;
   checkoutCommit: string | null;
   scope: "local" | "remote";
-  mode: "detailed" | "types" | "blame";
+  mode: "detailed" | "group-author" | "group-age" | "types" | "blame";
   scannedBranches: Array<{ ref: string; commitId: string }>;
   settings: DebtWatcherConfig;
   filters: ReportFilters & { includeFresh: boolean };
@@ -90,7 +90,7 @@ export async function latestReport(repositoryRoot: string, options: UserPathOpti
     || !saved.filters || typeof saved.filters.includeFresh !== "boolean"
     || (saved.closingLine !== undefined && (typeof saved.closingLine !== "string"
       || !saved.closingLine.trim() || /[\u0000-\u001f\u007f-\u009f]/u.test(saved.closingLine)))
-    || (saved.mode !== undefined && !["detailed", "types", "blame"].includes(saved.mode))
+    || (saved.mode !== undefined && !["detailed", "group-author", "group-age", "types", "blame"].includes(saved.mode))
     || !["local", "remote"].includes(saved.scope ?? "")
     || !["oldnew", "newold"].includes(saved.order ?? "")) {
     throw new Error(`Report cache is invalid or belongs to another repository: "${path}".`);

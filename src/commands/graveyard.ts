@@ -5,9 +5,10 @@ import { scanCommittedComments } from "../scanners/comments/scan.js";
 import { scanBranchTips } from "../scanners/branches.js";
 import { buildCodeFindings } from "../reports/build.js";
 import { buildCombinedReportView } from "../reports/filters.js";
-import { renderAuthorSummaryTerminal, renderCombinedReportTerminal, renderTypeSummaryTerminal } from "../reports/render/terminal.js";
-import { renderAuthorSummaryMarkdown, renderCombinedReportMarkdown, renderTypeSummaryMarkdown } from "../reports/render/markdown.js";
+import { renderAuthorSummaryTerminal, renderCombinedReportTerminal, renderGroupedReportTerminal, renderTypeSummaryTerminal } from "../reports/render/terminal.js";
+import { renderAuthorSummaryMarkdown, renderCombinedReportMarkdown, renderGroupedReportMarkdown, renderTypeSummaryMarkdown } from "../reports/render/markdown.js";
 import { buildAuthorSummary, buildTypeSummary } from "../reports/summaries.js";
+import { buildDetailedGroups } from "../reports/grouping.js";
 import { chooseClosingLine } from "../reports/messages.js";
 import { resolveLocalSourceLinks } from "../reports/local-links.js";
 import { resolveReportSettings } from "../reports/settings.js";
@@ -94,6 +95,8 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
   });
   const summary = options.summary === "types" ? buildTypeSummary(view) : undefined;
   const authorSummary = options.summary === "blame" ? buildAuthorSummary(view) : undefined;
+  const groupedMode = options.group === "author" || options.group === "age" ? options.group : undefined;
+  const groups = groupedMode ? buildDetailedGroups(view, groupedMode) : undefined;
   const closingLine = chooseClosingLine(view);
   const remotes = await resolveRemoteLinks(git);
   const links = {
@@ -113,16 +116,19 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
     scope: options.remote ? "remote" as const : "local" as const };
   const markdown = summary ? renderTypeSummaryMarkdown(summary, reportContext, closingLine)
     : authorSummary ? renderAuthorSummaryMarkdown(authorSummary, reportContext, closingLine)
-      : renderCombinedReportMarkdown(view, reportContext, links, closingLine);
+      : groups && groupedMode ? renderGroupedReportMarkdown(view, groups, groupedMode, reportContext, links, closingLine)
+        : renderCombinedReportMarkdown(view, reportContext, links, closingLine);
   await rememberReport({ version: 1, repositoryRoot: repository.location.repositoryRoot,
     generatedAt: view.generatedAt, checkoutBranch, checkoutCommit,
     scope: options.remote ? "remote" : "local",
-    mode: summary ? "types" : authorSummary ? "blame" : "detailed",
+    mode: summary ? "types" : authorSummary ? "blame"
+      : groupedMode === "author" ? "group-author" : groupedMode === "age" ? "group-age" : "detailed",
     scannedBranches: branches.map(({ ref, commitId }) => ({ ref, commitId })),
     settings: view.settings, filters: view.filters, order: view.order, closingLine, markdown }, userPaths);
   context.writeOutput(summary ? renderTypeSummaryTerminal(summary, closingLine)
     : authorSummary ? renderAuthorSummaryTerminal(authorSummary, closingLine)
-      : renderCombinedReportTerminal(view, terminalLinks, closingLine));
+      : groups && groupedMode ? renderGroupedReportTerminal(view, groups, groupedMode, terminalLinks, closingLine)
+        : renderCombinedReportTerminal(view, terminalLinks, closingLine));
   if (options.save === true) {
     const interactive = isInteractive(context.env, context.interactive);
     const saved = await saveMarkdownReport(markdown, {

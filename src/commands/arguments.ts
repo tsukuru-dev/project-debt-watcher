@@ -17,6 +17,7 @@ export interface ReportFilters {
 
 export interface GraveyardArguments extends SharedArguments {
   summary?: "types" | "blame";
+  group?: "type" | "author" | "age";
   save?: true | "latest";
   output?: string;
   remote?: boolean;
@@ -111,12 +112,15 @@ export function validateScope(command: string, options: SharedArguments): void {
 
 export function validateGraveyard(options: GraveyardArguments): void {
   validateScope("graveyard", options);
+  if (options.group !== undefined && options.summary !== undefined) {
+    throw new InvalidArgumentError("--group selects a detailed report; it cannot be combined with --summary.");
+  }
   if (options.output !== undefined && options.save === undefined) {
     throw new InvalidArgumentError("--output requires --save or --save latest.");
   }
   if (options.save === "latest") {
     const changingOptions = [
-      "summary", "order", "filter", "fresh", "ageing", "buried",
+      "summary", "group", "order", "filter", "fresh", "ageing", "buried",
       "markers", "remote", "all",
     ] as const;
     const conflict = changingOptions.find((key) => options[key] !== undefined);

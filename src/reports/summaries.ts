@@ -2,6 +2,7 @@ import type { AgeCategory } from "./ages.js";
 import type { CodeFinding, CodeReportView, CombinedReportView } from "./types.js";
 import type { BranchTipFinding } from "../scanners/branches.js";
 import { compareCodeFindings } from "./ordering.js";
+import { authorIdentity } from "./grouping.js";
 
 /** The type summary shares the detailed report's selected findings and totals. */
 export interface TypeSummary {
@@ -28,6 +29,8 @@ export interface AuthorGroup {
   identity: string;
   label: string;
   count: number;
+  codeCount: number;
+  branchCount: number;
   kind: "code" | "branches";
   oldest: CodeFinding | BranchTipFinding;
 }
@@ -52,14 +55,15 @@ export function buildAuthorSummary(view: CodeReportView | CombinedReportView): A
   const groups = new Map<string, AuthorGroup>();
   const add = (finding: CodeFinding | BranchTipFinding, kind: "code" | "branches",
     authorName: string, authorEmail: string): void => {
-    const name = authorName.trim(), email = authorEmail.trim();
-    const identity = email ? `${kind}:email:${email.toLowerCase()}`
-      : name ? `${kind}:name:${name.toLowerCase()}` : "unknown";
-    const label = email ? (name ? `${name} <${email}>` : email) : name || "Unknown";
+    const { identity, label } = authorIdentity(authorName, authorEmail, kind);
     const existing = groups.get(identity);
-    if (!existing) groups.set(identity, { identity, label, count: 1, kind, oldest: finding });
+    if (!existing) groups.set(identity, { identity, label, count: 1,
+      codeCount: kind === "code" ? 1 : 0, branchCount: kind === "branches" ? 1 : 0,
+      kind, oldest: finding });
     else {
       existing.count++;
+      if (kind === "code") existing.codeCount++;
+      else existing.branchCount++;
       const age = findingTime(finding, kind).localeCompare(findingTime(existing.oldest, existing.kind));
       if (age < 0 || (age === 0 && kind === existing.kind && kind === "code"
         && compareCodeFindings(finding as CodeFinding, existing.oldest as CodeFinding) < 0)) {

@@ -1,6 +1,8 @@
 # Commands
 
-Command routing, help, configuration loading/validation, listing, editing, copying, and editor opening are implemented. The full command and validation requirements live in `../Agent.md`.
+Command routing, help, configuration loading/validation, listing, editing, copying, and editor opening are implemented. The full command and validation requirements live in `../Plan1.md`.
+
+Detailed reports use `--group type` by default, which keeps code and branch sections. `--group author` combines code and branch rows under author headings and counts; `--group age` uses Fresh, Ageing, Buried, and Fossil headings in the selected order. Filters apply before grouping. The selected layout is retained by `--save` and `--save latest`. `--group` cannot be combined with `--summary` or `--save latest` on the same invocation.
 
 - `debt-watcher graveyard`: checks repository configuration, offers confirmed team setup/repair during interactive use, scans committed code comments and branch tips across local branches, and prints the filtered report. `--remote` selects fetched remote refs; `--repo` selects another local worktree. Freshness, markers, age bands, ordering and supported filters override saved settings for one run.
 - `debt-watcher config --list`: displays the active configuration and its file path; `--list markers` displays the configured markers. Existing personal defaults can be listed with `--global config --list`.

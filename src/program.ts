@@ -101,6 +101,8 @@ function createProgram(options: CliOptions): Command {
 
   program.command("graveyard")
     .description("Show or save code and branch debt reports and summaries")
+    .addOption(new Option("--group <mode>", "Group detailed findings by type (default), author, or age")
+      .choices(["type", "author", "age"]))
     .addOption(new Option("--summary [mode]", "Summarise by types (default) or blame")
       .choices(["types", "blame"]).preset("types"))
     .addOption(new Option("--save [mode]", "Save a new report, or export the latest snapshot")
@@ -121,6 +123,8 @@ function createProgram(options: CliOptions): Command {
       "  debt-watcher graveyard --filter includefresh=true --order newold",
       "  debt-watcher graveyard --remote --all --filter type=code",
       "  debt-watcher graveyard --filter type=branches",
+      "  debt-watcher graveyard --group author",
+      "  debt-watcher graveyard --group age",
       "  debt-watcher graveyard --save --output ./report.md",
       "  debt-watcher graveyard --summary --save --output ./summary.md",
       "  debt-watcher graveyard --summary blame --filter author=Alex",

@@ -2,6 +2,7 @@ import type { AgeCategory } from "../ages.js";
 import type { CodeFinding, CodeReportView, CombinedReportView, UnscannedFile } from "../types.js";
 import type { AuthorSummary, TypeSummary } from "../summaries.js";
 import type { BranchTipFinding } from "../../scanners/branches.js";
+import type { DetailedGroup } from "../grouping.js";
 
 export interface TerminalReportOptions {
   /** The caller supplies a URL for the exact committed source. Omit when unavailable. */
@@ -118,6 +119,47 @@ export function renderCombinedReportTerminal(view: CombinedReportView, options: 
   return lines.join("\n") + "\n";
 }
 
+/** A detailed report with code and branch rows together under each selected group. */
+export function renderGroupedReportTerminal(view: CombinedReportView, groups: DetailedGroup[],
+  mode: "author" | "age", options: TerminalReportOptions = {}, closingLine?: string): string {
+  const lines = [`Graveyard — project debt grouped by ${mode}`, `Generated: ${view.generatedAt}`,
+    `Branches: ${view.branches.length ? view.branches.map((branch) =>
+      `${branch.scope}/${plain(branch.name)}`).join(", ") : "(none)"}`,
+    `Total debt (${view.counts.total})`, `Code comments: ${view.counts.code} | Stale branches: ${view.counts.branches}`,
+    `Fresh ${view.counts.categories.fresh} | Ageing ${view.counts.categories.ageing}`
+      + ` | Buried ${view.counts.categories.buried} | Fossil ${view.counts.categories.fossil}`];
+  if (!groups.length) lines.push("No matching findings found.");
+  for (const group of groups) {
+    const label = mode === "age" ? group.label[0]!.toUpperCase() + group.label.slice(1) : group.label;
+    lines.push(`${plain(label)} (${group.findings.length})`);
+    for (const entry of group.findings) {
+      if (entry.kind === "code") {
+        const finding = entry.finding;
+        lines.push(`${AGE_ICONS[finding.category]} | ${finding.ageDays} days | code | `
+          + `${plain(finding.primary.marker)} | ${hyperlink(location(finding), options.sourceLink?.(finding))}`
+          + ` | ${description(finding)}`
+          + (mode === "age" && view.settings.showAuthors
+            ? ` | ${plain(finding.primary.attribution.authorName) || "Unknown"}` : ""));
+      } else {
+        const finding = entry.finding;
+        lines.push(`${AGE_ICONS[finding.category]} | ${finding.ageDays} days | branch | `
+          + `${hyperlink(finding.branch.commitId, options.commitLink?.(finding))} | ${plain(finding.branch.name)}`
+          + (mode === "age" && view.settings.showAuthors ? ` | ${plain(finding.authorName) || "Unknown"}` : ""));
+      }
+    }
+  }
+  if (view.oldest?.kind === "code") lines.push(`Oldest code comment: ${view.oldest.finding.ageDays} days | ${location(view.oldest.finding)}`);
+  else if (view.oldest?.kind === "branches") lines.push(`Oldest branch: ${view.oldest.finding.ageDays} days | ${plain(view.oldest.finding.branch.name)}`);
+  if (view.unscanned.length) {
+    lines.push(`Unscanned files (${view.unscanned.length}); debt in these files is unknown:`);
+    for (const file of view.unscanned) {
+      lines.push(`- ${plain(file.branch.name)}:${plain(file.file.path)} — ${unscannedReason(file)}`);
+    }
+  }
+  if (closingLine) lines.push("", closingLine);
+  return lines.join("\n") + "\n";
+}
+
 /** Compact type counts for the same filtered findings; no individual rows. */
 export function renderTypeSummaryTerminal(summary: TypeSummary, closingLine?: string): string {
   const lines = ["Graveyard — summary by type", `Generated: ${summary.generatedAt}`,
@@ -139,7 +181,7 @@ export function renderAuthorSummaryTerminal(summary: AuthorSummary, closingLine?
     `Scanned branches: ${summary.branchCount}`, `Total debt: ${summary.total}`, "Authors:"];
   if (!summary.groups.length) lines.push("(none)");
   for (const group of summary.groups) {
-    const label = plain(group.label) + (group.kind === "branches" && group.identity !== "unknown" ? " (branches)" : "");
+    const label = plain(group.label) + (group.codeCount === 0 && group.branchCount > 0 && group.identity !== "unknown" ? " (branches)" : "");
     const place = group.kind === "code" ? location(group.oldest as CodeFinding)
       : plain((group.oldest as BranchTipFinding).branch.name);
     lines.push(`${label}: ${group.count} | oldest ${group.oldest.ageDays} days | ${place}`);
