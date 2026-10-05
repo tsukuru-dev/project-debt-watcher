@@ -2,6 +2,8 @@
 
 Your friendly neighbourhood project debt watcher. Dig up forgotten TODOs, unresolved issues [coming soon], and stale branches before they become fossils.
 
+Want to help? See [CONTRIBUTING.md](https://github.com/tsukuru-dev/project-debt-watcher/blob/main/CONTRIBUTING.md) for issues, pull requests, and development steps.
+
 Contents:
 - [What it does](#what-it-does)
 - [Further functionality](#further-functionality)
@@ -10,6 +12,7 @@ Contents:
 - [Commands](#commands)
 - [How it works](#how-it-works)
 - [Current scope](#current-scope)
+- [License](#license)
 
 ## What it does
 
@@ -288,3 +291,7 @@ The report will end with a debt summary containing:
 ## Current scope
 
 This release reports flagged code comments and stale branch tips. GitHub/GitLab issue scanning and `--filter type=issues` are planned, so the current CLI rejects that filter clearly. Reports identify files that could not be scanned rather than counting them as debt-free.
+
+## License
+
+Debt Watcher is licensed under the [BSD 3-Clause License](LICENSE). We welcome issues and pull requests in this repository; see [CONTRIBUTING.md](https://github.com/tsukuru-dev/project-debt-watcher/blob/main/CONTRIBUTING.md).
