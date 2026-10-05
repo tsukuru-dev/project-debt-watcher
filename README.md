@@ -2,7 +2,14 @@
 
 Your friendly neighbourhood project debt watcher. Dig up forgotten TODOs, unresolved issues [coming soon], and stale branches before they become fossils.
 
-Commands are listed in a section towards the end.
+Contents:
+[Clickable link to each section]
+1. What it does
+2. Further Functionalities
+3. Set up
+4. Technical Specs
+5. Commands
+6. Current Scope
 
 ## What it does
 
@@ -48,7 +55,6 @@ Unless you are setting it in config through command.
 
 ### Links
 In terminal reports, a code location opens the local file when its bytes match the scanned commit. VS Code terminal links go to the flagged line; other terminals use the operating system's file handler, whose editor and line behavior can vary. If the local file differs, a recognised GitHub or GitLab remote supplies a link to the exact committed line instead. Branch commit IDs link to their commit pages. Saved Markdown uses portable web links where available. If a commit has not been pushed, its web link may not resolve yet.
-
 
 ### Saving Reports
 Any report can be saved with `--save` added to the command.
@@ -126,13 +132,9 @@ There are three core commands
 ```sh
 npx debt-watcher init
 ```
-This was covered and explained in installation
-
 ```sh
 npx debt-watcher graveyard
 ```
-`graveyard` is the command that essentially means give me a report
-
 ```sh
 npx debt-watcher config
 ```
@@ -191,6 +193,11 @@ npx debt-watcher graveyard --save latest --output ./report-copy.md
 ```
 
 ### Compounded Commands
+
+[Provide examples and explain how it works in general]
+
+### List of all commands
+[Table of all commands]
 
 ## How it works
 If you want to know how it works here is a little breakdown:
