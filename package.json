@@ -1,7 +1,14 @@
 {
   "name": "debt-watcher",
   "version": "0.0.0",
-  "description": "Your friendly neighbourhood project debt watcher.",
+  "description": "Find ageing code comments and stale Git branches across a repository.",
+  "keywords": ["technical-debt", "git", "todo", "code-comments", "cli"],
+  "homepage": "https://github.com/tsukuru-dev/project-debt-watcher#readme",
+  "bugs": "https://github.com/tsukuru-dev/project-debt-watcher/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tsukuru-dev/project-debt-watcher.git"
+  },
   "type": "module",
   "engines": {
     "node": ">=22"
