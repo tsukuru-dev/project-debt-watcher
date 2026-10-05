@@ -283,7 +283,7 @@ The report will end with a debt summary containing:
 - Total debt across all three categories.
 - The oldest item, including its debt type and details.
 - Separate counts for code comments, issues, and stale branches.
-- A randomly selected closing line, potentially based on the age or volume of debt: *“It's probably not temporary anymore.”*
+- A randomly selected closing line based on the displayed findings, such as *“It's probably not temporary anymore.”* Saved reports and `--save latest` retain the line selected when the report was generated.
 
 ## Current scope
 

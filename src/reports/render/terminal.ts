@@ -81,7 +81,8 @@ export function renderCodeReportTerminal(view: CodeReportView, options: Terminal
 }
 
 /** Detailed report with code and branch sections, using the same filtered totals. */
-export function renderCombinedReportTerminal(view: CombinedReportView, options: TerminalReportOptions = {}): string {
+export function renderCombinedReportTerminal(view: CombinedReportView, options: TerminalReportOptions = {},
+  closingLine?: string): string {
   const lines = ["Graveyard — project debt", `Generated: ${view.generatedAt}`,
     `Branches: ${view.branches.length ? view.branches.map((branch) =>
       `${branch.scope}/${plain(branch.name)}`).join(", ") : "(none)"}`,
@@ -113,11 +114,12 @@ export function renderCombinedReportTerminal(view: CombinedReportView, options: 
       lines.push(`- ${plain(file.branch.name)}:${plain(file.file.path)} — ${unscannedReason(file)}`);
     }
   }
+  if (closingLine) lines.push("", closingLine);
   return lines.join("\n") + "\n";
 }
 
 /** Compact type counts for the same filtered findings; no individual rows. */
-export function renderTypeSummaryTerminal(summary: TypeSummary): string {
+export function renderTypeSummaryTerminal(summary: TypeSummary, closingLine?: string): string {
   const lines = ["Graveyard — summary by type", `Generated: ${summary.generatedAt}`,
     `Scanned branches: ${summary.branchCount}`, `Total debt: ${summary.counts.total}`,
     `Code comments: ${summary.counts.code}`,
@@ -128,10 +130,11 @@ export function renderTypeSummaryTerminal(summary: TypeSummary): string {
       : summary.oldestKind === "branches" ? `Oldest: branch | ${summary.oldest!.ageDays} days | ${plain((summary.oldest as BranchTipFinding).branch.name)}`
       : "Oldest: none"];
   if (summary.unscannedCount) lines.push(`Unscanned files: ${summary.unscannedCount}; debt in these files is unknown.`);
+  if (closingLine) lines.push("", closingLine);
   return lines.join("\n") + "\n";
 }
 
-export function renderAuthorSummaryTerminal(summary: AuthorSummary): string {
+export function renderAuthorSummaryTerminal(summary: AuthorSummary, closingLine?: string): string {
   const lines = ["Graveyard — summary by author", `Generated: ${summary.generatedAt}`,
     `Scanned branches: ${summary.branchCount}`, `Total debt: ${summary.total}`, "Authors:"];
   if (!summary.groups.length) lines.push("(none)");
@@ -147,5 +150,6 @@ export function renderAuthorSummaryTerminal(summary: AuthorSummary): string {
       ? `Oldest: branch | ${summary.oldest!.ageDays} days | ${plain((summary.oldest as BranchTipFinding).branch.name)}`
       : "Oldest: none");
   if (summary.unscannedCount) lines.push(`Unscanned files: ${summary.unscannedCount}; debt in these files is unknown.`);
+  if (closingLine) lines.push("", closingLine);
   return lines.join("\n") + "\n";
 }

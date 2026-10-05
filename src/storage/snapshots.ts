@@ -19,6 +19,8 @@ export interface LatestReportSnapshot {
   settings: DebtWatcherConfig;
   filters: ReportFilters & { includeFresh: boolean };
   order: "oldnew" | "newold";
+  /** Chosen at generation time; older snapshots may not have this field. */
+  closingLine?: string;
   markdown: string;
 }
 
@@ -86,6 +88,8 @@ export async function latestReport(repositoryRoot: string, options: UserPathOpti
     || saved.scannedBranches.some((branch) => !branch || typeof branch.ref !== "string"
       || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u.test(branch.commitId))
     || !saved.filters || typeof saved.filters.includeFresh !== "boolean"
+    || (saved.closingLine !== undefined && (typeof saved.closingLine !== "string"
+      || !saved.closingLine.trim() || /[\u0000-\u001f\u007f-\u009f]/u.test(saved.closingLine)))
     || (saved.mode !== undefined && !["detailed", "types", "blame"].includes(saved.mode))
     || !["local", "remote"].includes(saved.scope ?? "")
     || !["oldnew", "newold"].includes(saved.order ?? "")) {

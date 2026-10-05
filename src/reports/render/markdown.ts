@@ -74,7 +74,7 @@ export function renderCodeReportMarkdown(view: CodeReportView,
 /** Export both detailed sections and their shared totals without terminal escapes. */
 export function renderCombinedReportMarkdown(view: CombinedReportView,
   context: { checkoutBranch: string | null; checkoutCommit: string | null; scope: "local" | "remote" },
-  links: MarkdownReportLinks = {}): string {
+  links: MarkdownReportLinks = {}, closingLine?: string): string {
   const lines = ["# Graveyard — project debt", "", `Generated: ${safe(view.generatedAt)}`,
     `Generating checkout: ${safe(context.checkoutBranch ?? "detached HEAD")}`
       + (context.checkoutCommit ? ` (${safe(context.checkoutCommit)})` : " (no commit)"),
@@ -119,12 +119,14 @@ export function renderCombinedReportMarkdown(view: CombinedReportView,
     for (const file of view.unscanned) lines.push(`- ${safe(file.branch.name)}:${safe(file.file.path)} — ${reason(file)}`);
     lines.push("");
   }
+  if (closingLine) lines.push(`*${safe(closingLine)}*`, "");
   return lines.join("\n") + "\n";
 }
 
 /** The saved type summary contains aggregate information, not detailed finding rows. */
 export function renderTypeSummaryMarkdown(summary: TypeSummary,
-  context: { checkoutBranch: string | null; checkoutCommit: string | null; scope: "local" | "remote" }): string {
+  context: { checkoutBranch: string | null; checkoutCommit: string | null; scope: "local" | "remote" },
+  closingLine?: string): string {
   const lines = ["# Graveyard — summary by type", "", `Generated: ${safe(summary.generatedAt)}`,
     `Generating checkout: ${safe(context.checkoutBranch ?? "detached HEAD")}`
       + (context.checkoutCommit ? ` (${safe(context.checkoutCommit)})` : " (no commit)"),
@@ -138,11 +140,13 @@ export function renderTypeSummaryMarkdown(summary: TypeSummary,
       : summary.oldestKind === "branches" ? `branch · ${summary.oldest!.ageDays} days · ${safe((summary.oldest as BranchTipFinding).branch.name)}`
         : "None"}`];
   if (summary.unscannedCount) lines.push("", `Unscanned files: ${summary.unscannedCount}; debt in these files is unknown.`);
+  if (closingLine) lines.push("", `*${safe(closingLine)}*`);
   return lines.join("\n") + "\n";
 }
 
 export function renderAuthorSummaryMarkdown(summary: AuthorSummary,
-  context: { checkoutBranch: string | null; checkoutCommit: string | null; scope: "local" | "remote" }): string {
+  context: { checkoutBranch: string | null; checkoutCommit: string | null; scope: "local" | "remote" },
+  closingLine?: string): string {
   const lines = ["# Graveyard — summary by author", "", `Generated: ${safe(summary.generatedAt)}`,
     `Generating checkout: ${safe(context.checkoutBranch ?? "detached HEAD")}`
       + (context.checkoutCommit ? ` (${safe(context.checkoutCommit)})` : " (no commit)"),
@@ -159,5 +163,6 @@ export function renderAuthorSummaryMarkdown(summary: AuthorSummary,
       : summary.oldestKind === "branches" ? `branch · ${summary.oldest!.ageDays} days · ${safe((summary.oldest as BranchTipFinding).branch.name)}`
         : "None"}`);
   if (summary.unscannedCount) lines.push("", `Unscanned files: ${summary.unscannedCount}; debt in these files is unknown.`);
+  if (closingLine) lines.push("", `*${safe(closingLine)}*`);
   return lines.join("\n") + "\n";
 }

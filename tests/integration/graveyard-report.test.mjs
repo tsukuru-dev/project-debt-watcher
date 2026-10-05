@@ -38,10 +38,13 @@ test("graveyard reports committed code across local or remote refs with temporar
   assert.match(normal.stdout, /🦖 \| \d+ days \| TODO \| main:legacy\.js:1 \| replace legacy route \| Demo Older/);
   assert.ok(!normal.stdout.includes("dirty working-tree text"));
   assert.ok(!normal.stdout.includes("recent cleanup"));
+  const normalClosingLine = normal.stdout.trimEnd().split("\n").at(-1);
+  assert.ok(normalClosingLine && normalClosingLine.endsWith("."));
   const firstLatest = await invoke(["--save", "latest", "--output", "./first-latest.md",
     "--repo", relative(f.root, repo)], f.root);
   assert.equal(firstLatest.status, 0, firstLatest.stderr);
   assert.match(readFileSync(join(f.root, "first-latest.md"), "utf8"), /Code comments: 1/);
+  assert.ok(readFileSync(join(f.root, "first-latest.md"), "utf8").includes(`*${normalClosingLine}*`));
 
   const summary = await invoke(["--summary"]);
   assert.equal(summary.status, 0, summary.stderr);
@@ -59,6 +62,7 @@ test("graveyard reports committed code across local or remote refs with temporar
   assert.match(summaryMarkdown, /# Graveyard — summary by type/);
   assert.match(summaryMarkdown, /Total debt: 1/);
   assert.ok(!summaryMarkdown.includes("replace legacy route"));
+  assert.ok(summaryMarkdown.includes(`*${savedSummary.stdout.trimEnd().split("\n").at(-2)}*`));
   const latestSummary = await invoke(["--save", "latest", "--output", "./summary-copy.md",
     "--repo", relative(f.root, repo)], f.root);
   assert.equal(latestSummary.status, 0, latestSummary.stderr);
@@ -77,6 +81,7 @@ test("graveyard reports committed code across local or remote refs with temporar
   assert.match(blameMarkdown, /# Graveyard — summary by author/);
   assert.match(blameMarkdown, /Demo Older &lt;older@example\.test&gt;/);
   assert.ok(!blameMarkdown.includes("replace legacy route"));
+  assert.ok(blameMarkdown.includes(`*${savedBlame.stdout.trimEnd().split("\n").at(-2)}*`));
   const latestBlame = await invoke(["--save", "latest", "--output", "./blame-copy.md",
     "--repo", relative(f.root, repo)], f.root);
   assert.equal(latestBlame.status, 0, latestBlame.stderr);

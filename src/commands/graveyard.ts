@@ -8,6 +8,7 @@ import { buildCombinedReportView } from "../reports/filters.js";
 import { renderAuthorSummaryTerminal, renderCombinedReportTerminal, renderTypeSummaryTerminal } from "../reports/render/terminal.js";
 import { renderAuthorSummaryMarkdown, renderCombinedReportMarkdown, renderTypeSummaryMarkdown } from "../reports/render/markdown.js";
 import { buildAuthorSummary, buildTypeSummary } from "../reports/summaries.js";
+import { chooseClosingLine } from "../reports/messages.js";
 import { resolveLocalSourceLinks } from "../reports/local-links.js";
 import { resolveReportSettings } from "../reports/settings.js";
 import { saveMarkdownReport } from "../storage/exports.js";
@@ -93,6 +94,7 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
   });
   const summary = options.summary === "types" ? buildTypeSummary(view) : undefined;
   const authorSummary = options.summary === "blame" ? buildAuthorSummary(view) : undefined;
+  const closingLine = chooseClosingLine(view);
   const remotes = await resolveRemoteLinks(git);
   const links = {
     sourceLink: (finding: typeof view.findings[number]) => sourcePermalink(
@@ -109,17 +111,18 @@ export async function runGraveyard(options: GraveyardArguments, repository: Prep
     .then((commit) => commit.trim(), () => null);
   const reportContext = { checkoutBranch, checkoutCommit,
     scope: options.remote ? "remote" as const : "local" as const };
-  const markdown = summary ? renderTypeSummaryMarkdown(summary, reportContext)
-    : authorSummary ? renderAuthorSummaryMarkdown(authorSummary, reportContext)
-      : renderCombinedReportMarkdown(view, reportContext, links);
+  const markdown = summary ? renderTypeSummaryMarkdown(summary, reportContext, closingLine)
+    : authorSummary ? renderAuthorSummaryMarkdown(authorSummary, reportContext, closingLine)
+      : renderCombinedReportMarkdown(view, reportContext, links, closingLine);
   await rememberReport({ version: 1, repositoryRoot: repository.location.repositoryRoot,
     generatedAt: view.generatedAt, checkoutBranch, checkoutCommit,
     scope: options.remote ? "remote" : "local",
     mode: summary ? "types" : authorSummary ? "blame" : "detailed",
     scannedBranches: branches.map(({ ref, commitId }) => ({ ref, commitId })),
-    settings: view.settings, filters: view.filters, order: view.order, markdown }, userPaths);
-  context.writeOutput(summary ? renderTypeSummaryTerminal(summary)
-    : authorSummary ? renderAuthorSummaryTerminal(authorSummary) : renderCombinedReportTerminal(view, terminalLinks));
+    settings: view.settings, filters: view.filters, order: view.order, closingLine, markdown }, userPaths);
+  context.writeOutput(summary ? renderTypeSummaryTerminal(summary, closingLine)
+    : authorSummary ? renderAuthorSummaryTerminal(authorSummary, closingLine)
+      : renderCombinedReportTerminal(view, terminalLinks, closingLine));
   if (options.save === true) {
     const interactive = isInteractive(context.env, context.interactive);
     const saved = await saveMarkdownReport(markdown, {
