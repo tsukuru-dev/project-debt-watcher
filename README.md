@@ -35,7 +35,7 @@ These can be configured based on your needs using the config file.
 Debt watcher finds lost branches by looking at latest commit dates. It reports ages and authors without changing your checkout.
 
 ### Reporting and filters
-The reporting in `graveyard` command is by default filtered by type (code, branches, issues) however can also be grouped by author or age.
+The default `graveyard` report has code and branch sections. You can filter findings by debt type, author, or freshness; summaries can group counts by type or author. Issue reporting is planned.
 
 Essentially commands exist that support the following:
 - showing all items including fresh items
@@ -146,7 +146,7 @@ npm run debt-watcher -- graveyard
 install globally with
 ```sh
 npm install -g debt-watcher
-npm run debt-watcher -- graveyard
+debt-watcher graveyard
 ```
 
 ### Supported languages
@@ -278,14 +278,14 @@ Each section will display its item count on the right, with an age indicator on 
 | Section | Row contents |
 | --- | --- |
 | Code | Age emoji, days old, linked comment marker, comment text, author when requested |
-| Issues | Age emoji, days old, linked issue ID, issue title, author |
+| Issues (planned) | Age emoji, days old, linked issue ID, issue title, author |
 | Stale branches | Age emoji, days since the last commit, linked commit ID, branch name, last commit author |
 
 The report will end with a debt summary containing:
 
-- Total debt across all three categories.
+- Total debt across the code and branch categories currently supported.
 - The oldest item, including its debt type and details.
-- Separate counts for code comments, issues, and stale branches.
+- Separate counts for code comments and stale branches.
 - A randomly selected closing line based on the displayed findings, such as *“It's probably not temporary anymore.”* Saved reports and `--save latest` retain the line selected when the report was generated.
 
 ## Current scope

@@ -1,6 +1,6 @@
 {
   "name": "debt-watcher",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "license": "BSD-3-Clause",
   "description": "Find ageing code comments and stale Git branches across a repository.",
   "keywords": ["technical-debt", "git", "todo", "code-comments", "cli"],

@@ -9,6 +9,7 @@ import { runNpm } from "../../dist/setup/npm.js";
 import { npmFixture, materialise } from "../helpers/setup-fixture.mjs";
 
 const read = (path) => JSON.parse(readFileSync(path, "utf8"));
+const packageVersion = read(fileURLToPath(new URL("../../package.json", import.meta.url))).version;
 const write = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2) + "\n");
 const interactive = (f) => ({ ...f.env, CI: "" });
 const yes = { interactive: true, confirm: async () => true };
@@ -220,7 +221,7 @@ test("real npm installs the local archive, generates the lock, exposes the CLI a
     "debt-watcher", "--", "--version"], { cwd: repo, env, encoding: "utf8", timeout: 30_000, windowsHide: true });
   assert.ifError(version.error);
   assert.equal(version.status, 0, version.stderr);
-  assert.equal(version.stdout.trim(), "0.0.0");
+  assert.equal(version.stdout.trim(), packageVersion);
   const before = ["package.json", "package-lock.json", ".gitignore", configFilename]
     .map((name) => readFileSync(join(repo, name), "utf8"));
   const second = await f.invoke(["init"], repo, env,
@@ -237,7 +238,7 @@ test("real npm installs the local archive, generates the lock, exposes the CLI a
   }
   const ci = await runNpm(["ci", "--offline"], { cwd: teammate, env });
   assert.equal(ci.code, 0, ci.stderr);
-  assert.equal(read(join(teammate, "node_modules", "debt-watcher", "package.json")).version, "0.0.0");
+  assert.equal(read(join(teammate, "node_modules", "debt-watcher", "package.json")).version, packageVersion);
   assert.deepEqual(read(join(teammate, configFilename)), template);
 
   const existing = f.repository("existing npm project");
